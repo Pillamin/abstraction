@@ -59,3 +59,79 @@ export async function saveQuizQuestion(question) {
 export async function deleteQuizQuestionFromDB(questionId) {
   await deleteDoc(doc(db, 'quiz_questions', String(questionId)));
 }
+
+// --- Version Snapshot Helpers ---
+export async function saveVersionSnapshot(type, data, note = '') {
+  const versionId = `v_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  const dateStr = new Date().toLocaleString('ko-KR');
+  const collectionName = type === 'quiz' ? 'quiz_versions' : 'problem_versions';
+  
+  const payload = {
+    id: versionId,
+    type,
+    timestamp,
+    dateStr,
+    count: data.length,
+    data,
+    note,
+    adminKey: 'comedu2026',
+  };
+
+  try {
+    const ref = doc(db, collectionName, versionId);
+    await setDoc(ref, payload);
+  } catch (e) {
+    console.warn('Firebase version save failed:', e);
+  }
+
+  // Also maintain in localStorage as immediate fallback
+  try {
+    const localKey = type === 'quiz' ? 'quiz_version_history' : 'problem_version_history';
+    const localList = JSON.parse(localStorage.getItem(localKey) || '[]');
+    localList.unshift(payload);
+    // Keep last 30 versions in localStorage
+    localStorage.setItem(localKey, JSON.stringify(localList.slice(0, 30)));
+  } catch (e) {
+    console.warn('Local version history write failed:', e);
+  }
+
+  return payload;
+}
+
+export async function fetchVersionSnapshots(type) {
+  const collectionName = type === 'quiz' ? 'quiz_versions' : 'problem_versions';
+  const localKey = type === 'quiz' ? 'quiz_version_history' : 'problem_version_history';
+  try {
+    const snapshot = await getDocs(collection(db, collectionName));
+    if (!snapshot.empty) {
+      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      return list;
+    }
+  } catch (e) {
+    console.warn('Firebase fetch versions failed, using local history.', e);
+  }
+  try {
+    return JSON.parse(localStorage.getItem(localKey) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export async function deleteVersionSnapshot(type, versionId) {
+  const collectionName = type === 'quiz' ? 'quiz_versions' : 'problem_versions';
+  const localKey = type === 'quiz' ? 'quiz_version_history' : 'problem_version_history';
+  try {
+    await deleteDoc(doc(db, collectionName, versionId));
+  } catch (e) {
+    console.warn('Firebase delete version failed:', e);
+  }
+  try {
+    const localList = JSON.parse(localStorage.getItem(localKey) || '[]');
+    const filtered = localList.filter((v) => v.id !== versionId);
+    localStorage.setItem(localKey, JSON.stringify(filtered));
+  } catch (e) {
+    console.warn('Local version delete failed:', e);
+  }
+}

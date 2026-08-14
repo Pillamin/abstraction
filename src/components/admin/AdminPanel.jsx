@@ -3,9 +3,8 @@
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Lock, Plus, Pencil, Trash2, Save, X, ShieldCheck, Check, Info, Search, Filter, Eye, EyeOff, CloudUpload, Download, Upload, ArrowUpDown, GripVertical } from 'lucide-react';
-import { saveProblem, deleteProblemFromDB, saveQuizQuestion, deleteQuizQuestionFromDB } from '../../config/firebase';
+import { Lock, Plus, Pencil, Trash2, Save, X, ShieldCheck, Check, Info, Search, Filter, Eye, EyeOff, CloudUpload, Download, Upload, ArrowUpDown, GripVertical, RotateCcw, History } from 'lucide-react';
+import { saveProblem, deleteProblemFromDB, saveQuizQuestion, deleteQuizQuestionFromDB, saveVersionSnapshot, fetchVersionSnapshots, deleteVersionSnapshot } from '../../config/firebase';
 
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN;
 
@@ -103,27 +102,159 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
-  function handleGridDragEnd(result) {
-    if (!result.destination) return;
-    const srcIdx = result.source.index;
-    const destIdx = result.destination.index;
-    if (srcIdx === destIdx) return;
+  // Version History Modal State
+  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [versionList, setVersionList] = useState([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [selectedVersionForRestore, setSelectedVersionForRestore] = useState(null);
 
-    const isTut0 = problems[0]?.isTutorial || problems[0]?.id === 'problem_practice';
-    if (isTut0 && (srcIdx === 0 || destIdx === 0)) return;
+  // Drag and drop state & Order History for Undo
+  const [draggedId, setDraggedId] = useState(null);
+  const [orderedProblems, setOrderedProblems] = useState(null);
+  const [orderHistory, setOrderHistory] = useState([]); // Stack of previous problem lists for Undo
 
-    const nextList = Array.from(problems);
-    const [moved] = nextList.splice(srcIdx, 1);
-    nextList.splice(destIdx, 0, moved);
+  async function openVersionModal(type) {
+    setShowVersionModal(true);
+    setLoadingVersions(true);
+    try {
+      const list = await fetchVersionSnapshots(type);
+      setVersionList(list);
+    } catch (e) {
+      console.error(e);
+      setVersionList([]);
+    } finally {
+      setLoadingVersions(false);
+    }
+  }
+
+  async function handleDeleteVersion(versionId) {
+    const type = mainSectionTab === 'quiz' ? 'quiz' : 'problems';
+    await deleteVersionSnapshot(type, versionId);
+    setVersionList((prev) => prev.filter((v) => v.id !== versionId));
+    setSyncMsg('🗑️ 해당 버전 스냅샷이 삭제되었습니다.');
+    setTimeout(() => setSyncMsg(''), 4000);
+  }
+
+  async function handleRestoreVersion(versionItem) {
+    const type = mainSectionTab === 'quiz' ? 'quiz' : 'problems';
+    if (!versionItem || !versionItem.data) return;
+
+    if (type === 'quiz') {
+      onQuizQuestionsChange(versionItem.data);
+      setSyncing(true);
+      setSyncMsg('☁️ 복원된 개념 퀴즈를 DB에 반영 중...');
+      try {
+        for (const q of versionItem.data) {
+          await saveQuizQuestion(q);
+        }
+        setSyncMsg(`✅ [${versionItem.dateStr}] 버전 (${versionItem.data.length}문항) 복원 완료!`);
+      } catch {
+        setSyncMsg(`✅ [${versionItem.dateStr}] 버전으로 로컬 복원 완료!`);
+      } finally {
+        setSyncing(false);
+        setTimeout(() => setSyncMsg(''), 5000);
+      }
+    } else {
+      onProblemsChange(versionItem.data);
+      saveToDiskFile(versionItem.data);
+      setSyncing(true);
+      setSyncMsg('☁️ 복원된 실생활 문제를 DB에 반영 중...');
+      try {
+        for (const p of versionItem.data) {
+          await saveProblem(p);
+        }
+        setSyncMsg(`✅ [${versionItem.dateStr}] 버전 (${versionItem.data.length}개 문제) 복원 완료!`);
+      } catch {
+        setSyncMsg(`✅ [${versionItem.dateStr}] 버전으로 로컬 복원 완료!`);
+      } finally {
+        setSyncing(false);
+        setTimeout(() => setSyncMsg(''), 5000);
+      }
+    }
+    setShowVersionModal(false);
+  }
+
+  function handleCardDragStart(e, problem) {
+    if (problem.isTutorial || searchQuery || statusFilter !== 'all') {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', problem.id);
+    setDraggedId(problem.id);
+    setOrderedProblems(problems);
+  }
+
+  function handleCardDragOver(e, targetProblem) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!draggedId || targetProblem.isTutorial) return;
+
+    // Use current ordered list or fallback to problems
+    const current = orderedProblems || problems;
+    const currentSrcIdx = current.findIndex((p) => p.id === draggedId);
+    const targetIdx = current.findIndex((p) => p.id === targetProblem.id);
+
+    if (currentSrcIdx !== -1 && targetIdx !== -1 && currentSrcIdx !== targetIdx) {
+      const next = Array.from(current);
+      const [item] = next.splice(currentSrcIdx, 1);
+      next.splice(targetIdx, 0, item);
+      setOrderedProblems(next);
+    }
+  }
+
+  function handleCardDrop(e) {
+    e.preventDefault();
+    if (!draggedId || !orderedProblems) {
+      setDraggedId(null);
+      setOrderedProblems(null);
+      return;
+    }
+
+    const nextList = orderedProblems;
+    const moved = nextList.find((p) => p.id === draggedId);
+
+    // Save previous state to history before committing new order
+    setOrderHistory((prev) => [...prev, problems]);
+
+    setDraggedId(null);
+    setOrderedProblems(null);
 
     onProblemsChange(nextList);
     saveToDiskFile(nextList);
 
+    if (moved) {
+      setSyncing(true);
+      setSyncMsg('☁️ 변경된 순서를 DB에 저장 중...');
+      saveProblem(moved)
+        .then(() => {
+          setSyncMsg('✅ 문제 순서 반영 완료!');
+          setTimeout(() => setSyncMsg(''), 5000);
+        })
+        .catch((err) => console.warn(err))
+        .finally(() => setSyncing(false));
+    }
+  }
+
+  function handleCardDragEnd() {
+    setDraggedId(null);
+    setOrderedProblems(null);
+  }
+
+  // 순서 변경 되돌리기 (Undo)
+  function handleUndoReorder() {
+    if (orderHistory.length === 0) return;
+    const previousList = orderHistory[orderHistory.length - 1];
+    setOrderHistory((prev) => prev.slice(0, -1));
+
+    onProblemsChange(previousList);
+    saveToDiskFile(previousList);
+
     setSyncing(true);
-    setSyncMsg('☁️ 변경된 순서를 DB에 저장 중...');
-    saveProblem(moved)
+    setSyncMsg('↩️ 이전 문제 순서로 복구 중...');
+    Promise.all(previousList.map((p) => saveProblem(p)))
       .then(() => {
-        setSyncMsg('✅ 문제 순서 반영 완료!');
+        setSyncMsg('✅ 이전 순서로 되돌리기 완료!');
         setTimeout(() => setSyncMsg(''), 5000);
       })
       .catch((err) => console.warn(err))
@@ -146,7 +277,9 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
         await saveProblem(p);
       }
       saveToDiskFile(problems);
-      setSyncMsg('✅ 구글 DB 및 initialProblems.js 파일로 전송 완료!');
+      // Automatically record a timestamped version snapshot
+      const snapshot = await saveVersionSnapshot('problems', problems, 'DB 직접 저장');
+      setSyncMsg(`✅ 구글 DB 저장 및 버전 기록 완료! (${snapshot?.dateStr || '방금'})`);
       setTimeout(() => setSyncMsg(''), 5000);
     } catch (e) {
       console.error(e);
@@ -156,13 +289,20 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     }
   }
 
+  function getVersionTimestamp() {
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  }
+
   function handleDownloadFile() {
-    const fileContent = `// src/data/initialProblems.js\n// 초기 상태 및 문제 데이터 세트\n\nexport const initialProblems = ${JSON.stringify(problems, null, 2)};\n`;
+    const version = getVersionTimestamp();
+    const fileContent = `// src/data/initialProblems.js\n// 버전: v_${version}\n// 저장일시: ${new Date().toLocaleString('ko-KR')}\n// 문제 데이터 세트 (총 ${problems.length}개)\n\nexport const initialProblems = ${JSON.stringify(problems, null, 2)};\n`;
     const blob = new Blob([fileContent], { type: 'text/javascript;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'initialProblems.js');
+    link.setAttribute('download', `initialProblems_v${version}.js`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -177,7 +317,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     reader.onload = async (evt) => {
       try {
         const rawText = evt.target.result || '';
-        
+
         // Strip single line (// ...) and block (/* ... */) JS comments
         const cleanText = rawText
           .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -252,12 +392,13 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
 
   // --- Concept Quiz Download / Upload / DB Sync ---
   function handleQuizDownloadFile() {
-    const fileContent = `// src/data/initialQuizQuestions.js\n// 초기 개념 퀴즈 데이터 세트\n\nexport const initialQuizQuestions = ${JSON.stringify(quizQuestions, null, 2)};\n`;
+    const version = getVersionTimestamp();
+    const fileContent = `// src/data/initialQuizQuestions.js\n// 버전: v_${version}\n// 저장일시: ${new Date().toLocaleString('ko-KR')}\n// 초기 개념 퀴즈 데이터 세트 (총 ${quizQuestions.length}문항)\n\nexport const initialQuizQuestions = ${JSON.stringify(quizQuestions, null, 2)};\n`;
     const blob = new Blob([fileContent], { type: 'text/javascript;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'initialQuizQuestions.js');
+    link.setAttribute('download', `initialQuizQuestions_v${version}.js`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -320,7 +461,9 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       for (const q of quizQuestions) {
         await saveQuizQuestion(q);
       }
-      setSyncMsg('✅ 전체 개념 퀴즈 데이터 구글 DB 전송 완료!');
+      // Automatically record a timestamped version snapshot for quizzes
+      const snapshot = await saveVersionSnapshot('quiz', quizQuestions, '개념 퀴즈 DB 저장');
+      setSyncMsg(`✅ 개념 퀴즈 DB 저장 및 버전 기록 완료! (${snapshot?.dateStr || '방금'})`);
       setTimeout(() => setSyncMsg(''), 5000);
     } catch (e) {
       console.error(e);
@@ -544,8 +687,11 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     saveProblem(updated).catch((err) => console.warn('Firebase sync warning:', err));
   }
 
+  // Source list to display: during drag, use live ordered list; otherwise normal problems list
+  const displayProblems = orderedProblems || problems;
+
   // Filtered & Sorted problems list (Tutorial #00 always stays at index 0)
-  const sortedProblems = [...problems].sort((a, b) => {
+  const sortedProblems = [...displayProblems].sort((a, b) => {
     if (a.isTutorial || a.id === 'problem_practice') return -1;
     if (b.isTutorial || b.id === 'problem_practice') return 1;
     return 0;
@@ -711,6 +857,16 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               </button>
 
               <button
+                type="button"
+                onClick={() => openVersionModal('quiz')}
+                className="h-9 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all shadow-2xs"
+                title="개념 퀴즈 저장 일시/버전 기록 목록 및 복원·삭제 관리"
+              >
+                <History size={14} className="text-amber-600" />
+                <span>버전 관리</span>
+              </button>
+
+              <button
                 onClick={startQuizAdd}
                 className="h-9 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 px-3.5"
               >
@@ -722,6 +878,19 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
 
           {mainSectionTab === 'problems' && (
             <>
+              {orderHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleUndoReorder}
+                  disabled={syncing}
+                  className="h-9 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all disabled:opacity-50 shadow-2xs"
+                  title={`최근 순서 변경 되돌리기 (남은 기록: ${orderHistory.length}회)`}
+                >
+                  <RotateCcw size={14} className="text-amber-600" />
+                  <span>순서 되돌리기 ({orderHistory.length})</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => document.getElementById('file-upload-input')?.click()}
@@ -737,7 +906,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                 type="button"
                 onClick={handleDownloadFile}
                 className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all"
-                title="현재 문제 데이터 세트를 initialProblems.js 파일로 내보내기 다운로드"
+                title="현재 문제 데이터 세트를 버전 포함 .js 파일로 다운로드 백업"
               >
                 <Download size={14} className="text-slate-600" />
                 <span>.js 다운로드</span>
@@ -751,6 +920,16 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               >
                 <CloudUpload size={15} />
                 <span>{syncing ? 'DB 저장 중...' : 'DB 저장'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openVersionModal('problems')}
+                className="h-9 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all shadow-2xs"
+                title="실생활 문제 저장 일시/버전 기록 목록 및 복원·삭제 관리"
+              >
+                <History size={14} className="text-indigo-600" />
+                <span>버전 관리</span>
               </button>
 
               <button
@@ -769,21 +948,19 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       <div className="flex border-b border-slate-200 mb-5 gap-2">
         <button
           onClick={() => setMainSectionTab('quiz')}
-          className={`pb-2.5 px-4 text-sm font-black transition-all border-b-2 cursor-pointer ${
-            mainSectionTab === 'quiz'
+          className={`pb-2.5 px-4 text-sm font-black transition-all border-b-2 cursor-pointer ${mainSectionTab === 'quiz'
               ? 'border-amber-500 text-amber-600'
               : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
+            }`}
         >
           💡 개념 퀴즈 문제 편집 ({quizQuestions.length})
         </button>
         <button
           onClick={() => setMainSectionTab('problems')}
-          className={`pb-2.5 px-4 text-sm font-black transition-all border-b-2 cursor-pointer ${
-            mainSectionTab === 'problems'
+          className={`pb-2.5 px-4 text-sm font-black transition-all border-b-2 cursor-pointer ${mainSectionTab === 'problems'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-slate-400 hover:text-slate-600'
-          }`}
+            }`}
         >
           🧩 실생활 문제 편집 ({problems.length})
         </button>
@@ -829,11 +1006,10 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                   <button
                     key={tab.id}
                     onClick={() => setStatusFilter(tab.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                      isActive
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${isActive
                         ? 'bg-indigo-600 text-white shadow-2xs'
                         : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -842,7 +1018,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
             </div>
           </div>
 
-          {/* Problem Cards Bento Grid (드래그 앤 드롭으로 순서 변경 가능) */}
+          {/* Problem Cards Bento Grid (4열 격자 및 드래그 앤 드롭 순서 변경) */}
           {filteredProblems.length === 0 ? (
             <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center space-y-2">
               <p className="text-2xl">🔍</p>
@@ -850,143 +1026,124 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               <p className="text-xs text-slate-400">검색어나 상태 필터를 확인해 보세요.</p>
             </div>
           ) : (
-            <DragDropContext onDragEnd={handleGridDragEnd}>
-              <Droppable droppableId="admin-grid-droppable" direction="horizontal">
-                {(provided) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+              {filteredProblems.map((problem) => {
+                const mainProblemsOnly = displayProblems.filter((p) => !p.isTutorial);
+                const mainIdx = mainProblemsOnly.findIndex((p) => p.id === problem.id);
+                const numStr = problem.isTutorial ? '00' : (mainIdx + 1).toString().padStart(2, '0');
+                const isDragDisabled = Boolean(problem.isTutorial || searchQuery || statusFilter !== 'all');
+                const isDragging = draggedId === problem.id;
+
+                return (
                   <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5"
+                    key={problem.id}
+                    draggable={!isDragDisabled}
+                    onDragStart={(e) => handleCardDragStart(e, problem)}
+                    onDragOver={(e) => handleCardDragOver(e, problem)}
+                    onDrop={(e) => handleCardDrop(e)}
+                    onDragEnd={handleCardDragEnd}
+                    className={`group relative bg-white border rounded-2xl p-3.5 transition-all duration-150 flex flex-col justify-between overflow-hidden select-none ${isDragging
+                        ? 'opacity-40 border-2 border-dashed border-indigo-400 scale-[0.97] bg-indigo-50/40'
+                        : problem.isTutorial
+                          ? 'border-purple-200/80 bg-purple-50/20'
+                          : problem.hidden
+                            ? 'border-slate-300 bg-slate-100/80 grayscale opacity-75 hover:grayscale-0 hover:opacity-100 hover:shadow-md'
+                            : 'border-slate-200/80 hover:border-indigo-300 hover:shadow-md'
+                      } ${!isDragDisabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
-                    {filteredProblems.map((problem) => {
-                      const mainProblemsOnly = problems.filter((p) => !p.isTutorial);
-                      const mainIdx = mainProblemsOnly.findIndex((p) => p.id === problem.id);
-                      const numStr = problem.isTutorial ? '00' : (mainIdx + 1).toString().padStart(2, '0');
-                      const realIndex = problems.findIndex((p) => p.id === problem.id);
-                      const isDragDisabled = Boolean(problem.isTutorial || searchQuery || statusFilter !== 'all');
+                    {/* Subtle muted overlay for hidden cards */}
+                    {problem.hidden && (
+                      <div className="absolute inset-0 bg-slate-900/5 pointer-events-none" />
+                    )}
 
-                      return (
-                        <Draggable
-                          key={problem.id}
-                          draggableId={problem.id}
-                          index={realIndex}
-                          isDragDisabled={isDragDisabled}
+                    {/* Header Row: Drag Handle, #Index, Action Icons */}
+                    <div className="flex items-center justify-between gap-1.5 mb-2.5 relative z-10">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {!problem.isTutorial && !isDragDisabled && (
+                          <div
+                            className="text-slate-400 group-hover:text-indigo-600 p-0.5 rounded shrink-0 transition-colors"
+                            title="드래그하여 문제 순서 변경"
+                          >
+                            <GripVertical size={16} />
+                          </div>
+                        )}
+                        {problem.isTutorial ? (
+                          <span className="text-[10px] font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200 shrink-0">
+                            #튜토리얼
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/80 px-2 py-0.5 rounded-md shrink-0">
+                            #{numStr}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Visibility Toggle Icon Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleProblemVisibility(problem, e)}
+                          className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${problem.hidden
+                              ? 'bg-slate-200/80 text-slate-400 border-slate-300 hover:bg-slate-300'
+                              : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 shadow-2xs'
+                            }`}
+                          title={problem.hidden ? '학생에게 숨김 상태 (클릭 시 공개)' : '학생에게 공개 중 (클릭 시 숨김)'}
                         >
-                          {(prov, snap) => (
-                            <div
-                              ref={prov.innerRef}
-                              {...prov.draggableProps}
-                              className={`group relative bg-white border rounded-2xl p-3.5 transition-all duration-200 flex flex-col justify-between overflow-hidden select-none ${
-                                snap.isDragging
-                                  ? 'border-2 border-indigo-500 shadow-2xl scale-[1.03] z-50 bg-indigo-50/90'
-                                  : problem.isTutorial
-                                  ? 'border-purple-200/80 bg-purple-50/20'
-                                  : problem.hidden
-                                  ? 'border-slate-300 bg-slate-100/80 grayscale opacity-75 hover:grayscale-0 hover:opacity-100 hover:shadow-md'
-                                  : 'border-slate-200/80 hover:border-indigo-300 hover:shadow-md'
-                              }`}
+                          {problem.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+
+                        {/* Edit Icon Button */}
+                        <button
+                          onClick={() => startEdit(problem)}
+                          className="w-7 h-7 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200/80 hover:border-indigo-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                          title="문제 상세 수정"
+                        >
+                          <Pencil size={13} />
+                        </button>
+
+                        {/* Delete Icon Button */}
+                        {deleteConfirm === problem.id ? (
+                          <div className="flex items-center gap-1 animate-fade-up">
+                            <button
+                              onClick={() => handleDelete(problem.id)}
+                              className="h-7 px-2 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black rounded-lg transition-colors cursor-pointer"
                             >
-                              {/* Subtle muted overlay for hidden cards */}
-                              {problem.hidden && (
-                                <div className="absolute inset-0 bg-slate-900/5 pointer-events-none" />
-                              )}
+                              삭제
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(null)}
+                              className="h-7 px-1.5 bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeleteConfirm(problem.id)}
+                            className="w-7 h-7 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-all cursor-pointer border border-rose-100"
+                            title="문제 삭제"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-                              {/* Header Row: Drag Handle, #Index, Action Icons */}
-                              <div className="flex items-center justify-between gap-1.5 mb-2.5 relative z-10">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  {!problem.isTutorial && !isDragDisabled && (
-                                    <div
-                                      {...prov.dragHandleProps}
-                                      className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-indigo-600 p-0.5 rounded hover:bg-slate-100 shrink-0 transition-colors"
-                                      title="드래그하여 문제 순서 변경"
-                                    >
-                                      <GripVertical size={16} />
-                                    </div>
-                                  )}
-                                  {problem.isTutorial ? (
-                                    <span className="text-[10px] font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200 shrink-0">
-                                      #튜토리얼
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100/80 px-2 py-0.5 rounded-md shrink-0">
-                                      #{numStr}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1 shrink-0">
-                                  {/* Visibility Toggle Icon Button */}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => toggleProblemVisibility(problem, e)}
-                                    className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
-                                      problem.hidden
-                                        ? 'bg-slate-200/80 text-slate-400 border-slate-300 hover:bg-slate-300'
-                                        : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 shadow-2xs'
-                                    }`}
-                                    title={problem.hidden ? '학생에게 숨김 상태 (클릭 시 공개)' : '학생에게 공개 중 (클릭 시 숨김)'}
-                                  >
-                                    {problem.hidden ? <EyeOff size={13} /> : <Eye size={13} />}
-                                  </button>
-
-                                  {/* Edit Icon Button */}
-                                  <button
-                                    onClick={() => startEdit(problem)}
-                                    className="w-7 h-7 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200/80 hover:border-indigo-600 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                                    title="문제 상세 수정"
-                                  >
-                                    <Pencil size={13} />
-                                  </button>
-
-                                  {/* Delete Icon Button */}
-                                  {deleteConfirm === problem.id ? (
-                                    <div className="flex items-center gap-1 animate-fade-up">
-                                      <button
-                                        onClick={() => handleDelete(problem.id)}
-                                        className="h-7 px-2 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black rounded-lg transition-colors cursor-pointer"
-                                      >
-                                        삭제
-                                      </button>
-                                      <button
-                                        onClick={() => setDeleteConfirm(null)}
-                                        className="h-7 px-1.5 bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg cursor-pointer"
-                                      >
-                                        ✕
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => setDeleteConfirm(problem.id)}
-                                      className="w-7 h-7 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-all cursor-pointer border border-rose-100"
-                                      title="문제 삭제"
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Card Content: Emoji & Title */}
-                              <div className="flex items-start gap-3 pt-1 pb-1 relative z-10">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-50/80 text-2xl flex items-center justify-center border border-indigo-100/60 shrink-0 shadow-2xs group-hover:scale-105 transition-transform mt-0.5">
-                                  {problem.emoji}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <h3 className="font-extrabold text-slate-800 text-sm leading-snug break-keep group-hover:text-indigo-600 transition-colors">
-                                    {problem.title}
-                                  </h3>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      );
-                    })}
-                    {provided.placeholder}
+                    {/* Card Content: Emoji & Title */}
+                    <div className="flex items-start gap-3 pt-1 pb-1 relative z-10">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50/80 text-2xl flex items-center justify-center border border-indigo-100/60 shrink-0 shadow-2xs group-hover:scale-105 transition-transform mt-0.5">
+                        {problem.emoji}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-extrabold text-slate-800 text-sm leading-snug break-keep group-hover:text-indigo-600 transition-colors">
+                          {problem.title}
+                        </h3>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+                );
+              })}
+            </div>
           )}
         </>
       )}
@@ -1074,7 +1231,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       {showEditModal && editForm && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/80 backdrop-blur-md animate-fade-up">
           <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[85vh] my-auto flex flex-col shadow-2xl overflow-hidden ring-1 ring-slate-900/10 animate-bounce-in">
-            
+
             {/* Modal Header */}
             <div className="bg-slate-50 border-b border-slate-200 px-6 pt-5 pb-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
@@ -1114,11 +1271,10 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-3 rounded-t-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                      isActive
+                    className={`px-4 py-3 rounded-t-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${isActive
                         ? 'bg-white text-indigo-600 border-t-2 border-indigo-600 shadow-2xs'
                         : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -1128,7 +1284,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
 
             {/* Modal Scrollable Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
-              
+
               {/* TAB 1: BASIC INFO */}
               {activeTab === 'basic' && (
                 <div className="space-y-5 animate-fade-up">
@@ -1244,9 +1400,8 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                                     setEditForm({ ...editForm, emoji });
                                     setShowEmojiPicker(false);
                                   }}
-                                  className={`w-9 h-9 rounded-xl text-xl flex items-center justify-center transition-all hover:scale-110 cursor-pointer ${
-                                    editForm.emoji === emoji ? 'bg-indigo-600 text-white ring-2 ring-indigo-400' : 'bg-white hover:bg-indigo-50 border border-slate-200'
-                                  }`}
+                                  className={`w-9 h-9 rounded-xl text-xl flex items-center justify-center transition-all hover:scale-110 cursor-pointer ${editForm.emoji === emoji ? 'bg-indigo-600 text-white ring-2 ring-indigo-400' : 'bg-white hover:bg-indigo-50 border border-slate-200'
+                                    }`}
                                 >
                                   {emoji}
                                 </button>
@@ -1292,11 +1447,10 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                     <button
                       type="button"
                       onClick={() => setEditForm({ ...editForm, hidden: !editForm.hidden })}
-                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                        editForm.hidden
+                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${editForm.hidden
                           ? 'bg-slate-200 text-slate-600 border border-slate-300 hover:bg-slate-300'
                           : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md'
-                      }`}
+                        }`}
                     >
                       <span>{editForm.hidden ? '🙈 학생에게 숨김' : '🟢 학생에게 공개 중'}</span>
                     </button>
@@ -1608,7 +1762,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
 
                   {/* Input & Output Options */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
+
                     {/* Input Options */}
                     <div className="bg-sky-50/50 p-4 rounded-2xl border border-sky-200/80 space-y-3">
                       <div className="flex items-center justify-between">
@@ -1641,9 +1795,8 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                                   }
                                   setEditForm({ ...editForm, step3: { ...editForm.step3, input: newInputs } });
                                 }}
-                                className={`px-2 py-1.5 rounded-lg text-[11px] font-extrabold shrink-0 transition-colors cursor-pointer ${
-                                  isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-                                }`}
+                                className={`px-2 py-1.5 rounded-lg text-[11px] font-extrabold shrink-0 transition-colors cursor-pointer ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+                                  }`}
                                 title={isCorrect ? '정답 항목' : '클릭해서 정답 지정'}
                               >
                                 {isCorrect ? '✓ 정답' : '오답'}
@@ -1715,9 +1868,8 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                                   }
                                   setEditForm({ ...editForm, step3: { ...editForm.step3, output: newOutputs } });
                                 }}
-                                className={`px-2 py-1.5 rounded-lg text-[11px] font-extrabold shrink-0 transition-colors cursor-pointer ${
-                                  isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-                                }`}
+                                className={`px-2 py-1.5 rounded-lg text-[11px] font-extrabold shrink-0 transition-colors cursor-pointer ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
+                                  }`}
                                 title={isCorrect ? '정답 항목' : '클릭해서 정답 지정'}
                               >
                                 {isCorrect ? '✓ 정답' : '오답'}
@@ -2057,11 +2209,10 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                       <button
                         type="button"
                         onClick={() => setQuizForm({ ...quizForm, correctAnswer: optText })}
-                        className={`px-3 py-2 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer ${
-                          isCorrect
+                        className={`px-3 py-2 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer ${isCorrect
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
-                        }`}
+                          }`}
                         title={isCorrect ? '현재 정답' : '클릭해서 정답으로 지정'}
                       >
                         {isCorrect ? '✓ 정답' : `${optIdx + 1}번`}
@@ -2123,6 +2274,105 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
         document.body
       )}
 
+      {/* Version History Management Modal */}
+      {showVersionModal && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fade-up">
+          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-bounce-in">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${mainSectionTab === 'quiz' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                  <History size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">
+                    {mainSectionTab === 'quiz' ? '개념 퀴즈' : '실생활 문제'} 버전 관리 히스토리
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-bold">
+                    DB에 저장된 시점별 스냅샷 목록을 확인하고 복원하거나 삭제할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowVersionModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-3 flex-1">
+              {loadingVersions ? (
+                <div className="py-12 text-center space-y-2">
+                  <div className="w-7 h-7 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-500">버전 기록을 불러오는 중...</p>
+                </div>
+              ) : versionList.length === 0 ? (
+                <div className="py-12 text-center space-y-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-2xl">⏳</p>
+                  <p className="text-xs font-black text-slate-600">저장된 버전 기록이 없습니다.</p>
+                  <p className="text-[11px] text-slate-400">
+                    상단의 <strong>[DB 저장]</strong> 버튼을 누르면 날짜와 시간이 자동 기록됩니다.
+                  </p>
+                </div>
+              ) : (
+                versionList.map((ver, idx) => (
+                  <div
+                    key={ver.id}
+                    className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-3 transition-all"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${idx === 0 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-200 text-slate-600'}`}>
+                          {idx === 0 ? '최신 버전' : `v_${ver.id.replace('v_', '')}`}
+                        </span>
+                        <span className="text-xs font-black text-slate-700">
+                          {ver.dateStr || new Date(ver.timestamp).toLocaleString('ko-KR')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-bold">
+                        {mainSectionTab === 'quiz' ? `퀴즈 ${ver.count || ver.data?.length || 0}문항` : `문제 ${ver.count || ver.data?.length || 0}개`}
+                        {ver.note && ` · ${ver.note}`}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleRestoreVersion(ver)}
+                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200/80 hover:border-indigo-600 rounded-xl text-xs font-black transition-all cursor-pointer shadow-2xs"
+                        title="이 버전 상태로 데이터 복원"
+                      >
+                        복원
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVersion(ver.id)}
+                        className="w-7 h-7 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-all cursor-pointer border border-rose-100"
+                        title="이 버전 기록 영구 삭제"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs font-bold text-slate-400">
+              <span>총 {versionList.length}개 버전 기록</span>
+              <button
+                onClick={() => setShowVersionModal(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold cursor-pointer transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Reset Confirmation Modal */}
       {showResetConfirmModal && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fade-up">
@@ -2162,13 +2412,12 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       {/* Floating Toast Notification (화면 상단 중앙 플로팅 토스트) */}
       {syncMsg && createPortal(
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999999] animate-bounce-in">
-          <div className={`px-5 py-3 rounded-2xl shadow-2xl text-xs font-black border flex items-center gap-2.5 backdrop-blur-md ${
-            syncMsg.includes('✅')
+          <div className={`px-5 py-3 rounded-2xl shadow-2xl text-xs font-black border flex items-center gap-2.5 backdrop-blur-md ${syncMsg.includes('✅')
               ? 'bg-emerald-600/95 text-white border-emerald-400'
               : syncMsg.includes('☁️')
-              ? 'bg-amber-500/95 text-white border-amber-300'
-              : 'bg-rose-600/95 text-white border-rose-400'
-          }`}>
+                ? 'bg-amber-500/95 text-white border-amber-300'
+                : 'bg-rose-600/95 text-white border-rose-400'
+            }`}>
             <span>{syncMsg}</span>
             <button
               onClick={() => setSyncMsg('')}
