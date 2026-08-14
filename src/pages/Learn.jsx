@@ -432,7 +432,7 @@ export default function Learn({ quizPool }) {
       };
     });
 
-    const passed = score === quizQuestions.length; // 10/10
+    const passed = score >= 9; // 9문항 이상(90점 이상) 통과
 
     if (passed) {
       localStorage.setItem('abstraction_quiz_passed', 'true');
@@ -1044,7 +1044,7 @@ export default function Learn({ quizPool }) {
 
             {!scoreResult.passed && (
               <p className="text-[11px] text-rose-500 font-extrabold mt-2">
-                ※ 10개 문제(100점)를 모두 맞혀야 실생활 문제 풀러가기 버튼이 열립니다! 아래 오답 카드를 클릭하여 해설을 확인하세요.
+                ※ 10개 중 9개 이상(90점 이상)을 맞혀야 실생활 문제 풀러가기 버튼이 열립니다! 아래 오답 카드를 클릭하여 해설을 확인하세요.
               </p>
             )}
           </div>
