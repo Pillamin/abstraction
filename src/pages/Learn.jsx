@@ -376,7 +376,7 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function Learn() {
+export default function Learn({ quizPool }) {
   const navigate = useNavigate();
 
   // Mode: 'SLIDES' | 'QUIZ' | 'RESULT'
@@ -393,7 +393,8 @@ export default function Learn() {
 
   // Generate randomized quiz
   function startQuiz() {
-    const selected10 = shuffleArray(RAW_QUIZ_QUESTIONS).slice(0, 10);
+    const questionsToUse = (Array.isArray(quizPool) && quizPool.length > 0) ? quizPool : RAW_QUIZ_QUESTIONS;
+    const selected10 = shuffleArray(questionsToUse).slice(0, 10);
     const shuffledQuestions = selected10.map((q) => {
       const shuffledOptions = shuffleArray(q.options);
       return {

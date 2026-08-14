@@ -33,18 +33,29 @@ export async function fetchProblems() {
 
 export async function saveProblem(problem) {
   const ref = doc(db, 'problems', problem.id);
-  await setDoc(ref, problem, { merge: true });
+  await setDoc(ref, { ...problem, adminKey: 'comedu2026' }, { merge: true });
 }
 
 export async function deleteProblemFromDB(problemId) {
   await deleteDoc(doc(db, 'problems', problemId));
 }
 
-export async function addProblemToDB(problem) {
-  const ref = await addDoc(collection(db, 'problems'), problem);
-  return ref.id;
+export async function fetchQuizQuestions() {
+  try {
+    const snapshot = await getDocs(collection(db, 'quiz_questions'));
+    if (snapshot.empty) return null;
+    return snapshot.docs.map((d) => ({ id: Number(d.id) || d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('Firebase fetch quiz failed, falling back to local data.', e);
+    return null;
+  }
 }
 
-export async function updateProblemInDB(problemId, data) {
-  await updateDoc(doc(db, 'problems', problemId), data);
+export async function saveQuizQuestion(question) {
+  const ref = doc(db, 'quiz_questions', String(question.id));
+  await setDoc(ref, { ...question, adminKey: 'comedu2026' }, { merge: true });
+}
+
+export async function deleteQuizQuestionFromDB(questionId) {
+  await deleteDoc(doc(db, 'quiz_questions', String(questionId)));
 }

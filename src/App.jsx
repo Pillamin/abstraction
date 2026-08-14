@@ -7,13 +7,14 @@ import Practice from './pages/Practice';
 import Admin from './pages/Admin';
 import Learn from './pages/Learn';
 import { initialProblems } from './data/initialProblems';
-import { fetchProblems, saveProblem } from './config/firebase';
+import { initialQuizQuestions } from './data/initialQuizQuestions';
+import { fetchProblems, saveProblem, fetchQuizQuestions } from './config/firebase';
 
 const STORAGE_KEY = 'abstraction_completed';
 
 import Footer from './components/common/Footer';
 
-function AppContent({ problems, setProblems }) {
+function AppContent({ problems, setProblems, quizQuestions, setQuizQuestions }) {
   const location = useLocation();
   const [soundOn, setSoundOn] = useState(true);
   const [entered, setEntered] = useState(false);
@@ -76,7 +77,7 @@ function AppContent({ problems, setProblems }) {
             path="/learn"
             element={
               <div className="h-full overflow-y-auto">
-                <Learn />
+                <Learn quizPool={quizQuestions} />
               </div>
             }
           />
@@ -97,7 +98,12 @@ function AppContent({ problems, setProblems }) {
             path="/admin"
             element={
               <div className="h-full overflow-y-auto">
-                <Admin problems={problems} onProblemsChange={setProblems} />
+                <Admin
+                  problems={problems}
+                  onProblemsChange={setProblems}
+                  quizQuestions={quizQuestions}
+                  onQuizQuestionsChange={setQuizQuestions}
+                />
               </div>
             }
           />
@@ -152,6 +158,15 @@ export default function App() {
     }
   });
 
+  const [quizQuestions, setQuizQuestions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('custom_quiz_questions');
+      return saved ? JSON.parse(saved) : initialQuizQuestions;
+    } catch {
+      return initialQuizQuestions;
+    }
+  });
+
   const handleProblemsChange = (newProblems) => {
     const sanitized = sanitizeProblemText(newProblems);
     setProblems(sanitized);
@@ -162,8 +177,17 @@ export default function App() {
     }
   };
 
+  const handleQuizQuestionsChange = (newQuizQuestions) => {
+    setQuizQuestions(newQuizQuestions);
+    try {
+      localStorage.setItem('custom_quiz_questions', JSON.stringify(newQuizQuestions));
+    } catch (e) {
+      console.error('Failed to save quiz questions to localStorage:', e);
+    }
+  };
+
   useEffect(() => {
-    // Try to load from Firebase; fall back to local data silently
+    // Try to load problems from Firebase; fall back to local data silently
     fetchProblems().then((remote) => {
       if (remote && remote.length > 0) {
         const tutorialProb = initialProblems.find((p) => p.isTutorial);
@@ -192,18 +216,30 @@ export default function App() {
         } catch (e) {
           console.error(e);
         }
-      } else {
-        // If Firestore DB is newly created and empty, automatically seed initialProblems into Firestore
-        initialProblems.forEach((p) => {
-          saveProblem(sanitizeProblemText(p)).catch(() => {});
-        });
+      }
+    });
+
+    // Try to load quiz questions from Firebase
+    fetchQuizQuestions().then((remoteQuiz) => {
+      if (remoteQuiz && remoteQuiz.length > 0) {
+        setQuizQuestions(remoteQuiz);
+        try {
+          localStorage.setItem('custom_quiz_questions', JSON.stringify(remoteQuiz));
+        } catch (e) {
+          console.error(e);
+        }
       }
     });
   }, []);
 
   return (
     <BrowserRouter>
-      <AppContent problems={problems} setProblems={handleProblemsChange} />
+      <AppContent
+        problems={problems}
+        setProblems={handleProblemsChange}
+        quizQuestions={quizQuestions}
+        setQuizQuestions={handleQuizQuestionsChange}
+      />
     </BrowserRouter>
   );
 }
