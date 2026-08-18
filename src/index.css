@@ -228,3 +228,102 @@ div[data-rfd-drag-handle] {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ==========================================================================
+   Responsive Layout Media Queries
+   (모바일 / 작은 창: max-width: 768px 또는 max-height: 650px)
+   데스크톱 (큰 화면): 100dvh, overflow: hidden 유지
+   ========================================================================== */
+@media (max-width: 768px), (max-height: 650px) {
+  /* 1. Root & Base Layout */
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-container {
+    height: auto !important;
+    min-height: 100dvh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .app-main {
+    flex: 1 0 auto !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
+  .page-scroll-container {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
+  /* 2. Practice Page Layout */
+  .practice-container {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .practice-bento-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .practice-left-col,
+  .practice-right-col {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* 3. Cards & Bento Layout Adjustments */
+  .card-bento {
+    padding: 1rem !important;
+    border-radius: 14px !important;
+  }
+
+  .drop-zone {
+    min-height: 46px !important;
+    padding: 0.5rem !important;
+    gap: 0.375rem !important;
+  }
+
+  .drag-card {
+    font-size: 0.8125rem !important;
+    padding: 0.35rem 0.65rem !important;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.55rem 1.25rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  /* 4. Learn & Concept Modal Cards */
+  .responsive-learn-card,
+  .responsive-concept-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: calc(100dvh - 2rem) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 1rem !important;
+  }
+}
+

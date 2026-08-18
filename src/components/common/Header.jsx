@@ -17,7 +17,13 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
           <div className="flex items-center gap-3">
             {/* Home Icon Button */}
             <button
-              onClick={() => navigate('/', { state: { resetHome: Date.now() } })}
+              onClick={() => {
+                const event = new CustomEvent('request-navigate-home', { cancelable: true });
+                const notCancelled = window.dispatchEvent(event);
+                if (notCancelled) {
+                  navigate('/', { state: { resetHome: Date.now() } });
+                }
+              }}
               className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors cursor-pointer shrink-0"
               title="홈으로 이동"
             >

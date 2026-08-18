@@ -123,9 +123,9 @@ export default function Practice({ problems, completedIds, onComplete, soundOn }
   }
 
   return (
-    <div className="h-full w-full max-w-7xl mx-auto px-4 py-2 flex flex-col overflow-hidden">
+    <div className="practice-container h-full w-full max-w-7xl mx-auto px-4 py-2 flex flex-col overflow-hidden">
       {/* Back button (언제든지 홈/문제 목록으로 이동 가능) */}
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="flex items-center justify-between mb-2.5 shrink-0">
         <button
           onClick={() => navigate('/', { state: { showGrid: true } })}
           className="flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer shrink-0 shadow-2xs hover:shadow-xs active:scale-95"
@@ -136,9 +136,9 @@ export default function Practice({ problems, completedIds, onComplete, soundOn }
       </div>
 
       {/* Bento Layout: left 1/3 + right 2/3 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+      <div className="practice-bento-layout grid grid-cols-1 lg:grid-cols-3 gap-3 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
         {/* Left: Problem Card */}
-        <div className="lg:col-span-1 lg:h-full lg:flex lg:flex-col lg:min-h-0">
+        <div className="practice-left-col lg:col-span-1 lg:h-full lg:flex lg:flex-col lg:min-h-0">
           <div
             className="card-bento lg:flex-1 lg:overflow-y-auto p-4 flex flex-col justify-between"
             style={{
@@ -234,7 +234,7 @@ export default function Practice({ problems, completedIds, onComplete, soundOn }
         </div>
 
         {/* Right: Step Content */}
-        <div className="lg:col-span-2 lg:h-full lg:flex lg:flex-col lg:min-h-0">
+        <div className="practice-right-col lg:col-span-2 lg:h-full lg:flex lg:flex-col lg:min-h-0">
           {/* Step tabs & Guide Popup Button Row */}
           <div className="flex items-center justify-between gap-2 mb-3 shrink-0">
             <div className="flex gap-2">

@@ -456,9 +456,9 @@ export default function Learn({ quizPool }) {
 
   return (
     <div className="h-full w-full flex items-center justify-center p-4 overflow-hidden">
-      {/* MODE 1: CONCEPT SLIDES (780px x 600px 고정 규격) */}
+      {/* MODE 1: CONCEPT SLIDES (데스크톱: 780px x 600px, 모바일: 반응형 및 스크롤 지원) */}
       {mode === 'SLIDES' && (
-        <div className="card-bento w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
+        <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
           {/* Header Bar */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
             <div className="flex items-center gap-2.5">
@@ -884,9 +884,9 @@ export default function Learn({ quizPool }) {
         </div>
       )}
 
-      {/* MODE 2: QUIZ SOLVING (780px x 600px 고정 규격 통일) */}
+      {/* MODE 2: QUIZ SOLVING (데스크톱: 780px x 600px, 모바일: 반응형) */}
       {mode === 'QUIZ' && currentQuiz && (
-        <div className="card-bento w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
+        <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
           {/* Header Bar */}
           <div className="flex flex-col gap-2 shrink-0 border-b border-slate-100 pb-3">
             <div className="flex items-center justify-between">
@@ -989,9 +989,9 @@ export default function Learn({ quizPool }) {
         </div>
       )}
 
-      {/* MODE 3: RESULT & EXPLANATION (780px x 600px 고정 규격) */}
+      {/* MODE 3: RESULT & EXPLANATION (데스크톱: 780px x 600px, 모바일: 반응형) */}
       {mode === 'RESULT' && (
-        <div className="card-bento w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
+        <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
           {/* Result Banner (Top Half) */}
           <div className={`p-5 rounded-2xl border-2 text-center flex flex-col items-center justify-center shrink-0 ${scoreResult.passed
               ? 'bg-gradient-to-br from-emerald-50 via-teal-50 to-indigo-50 border-emerald-300'

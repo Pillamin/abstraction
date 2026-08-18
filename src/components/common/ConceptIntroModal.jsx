@@ -113,8 +113,8 @@ export default function ConceptIntroModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-up">
-      {/* 팝업 창 규격: 780px x 600px */}
-      <div className="card-bento w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100">
+      {/* 팝업 창 규격: 데스크톱 780px x 600px, 모바일 반응형 */}
+      <div className="card-bento responsive-concept-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100">
         
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">

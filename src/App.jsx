@@ -49,7 +49,7 @@ function AppContent({ problems, setProblems, quizQuestions, setQuizQuestions }) 
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-50 overflow-hidden">
+    <div id="app-root" className="app-container h-screen w-screen flex flex-col bg-slate-50 overflow-hidden">
       <Header
         soundOn={soundOn}
         onToggleSound={() => setSoundOn((s) => !s)}
@@ -58,12 +58,12 @@ function AppContent({ problems, setProblems, quizQuestions, setQuizQuestions }) 
         showProgress={!isAdmin}
         showConceptBtn={showConceptBtn}
       />
-      <main className="flex-1 overflow-hidden relative">
+      <main id="app-main" className="app-main flex-1 overflow-hidden relative">
         <Routes>
           <Route
             path="/"
             element={
-              <div className="h-full overflow-y-auto">
+              <div className="page-scroll-container h-full overflow-y-auto overflow-x-hidden">
                 <Home
                   problems={problems}
                   completedIds={completedIds}
@@ -76,7 +76,7 @@ function AppContent({ problems, setProblems, quizQuestions, setQuizQuestions }) 
           <Route
             path="/learn"
             element={
-              <div className="h-full overflow-y-auto">
+              <div className="page-scroll-container h-full overflow-y-auto overflow-x-hidden">
                 <Learn quizPool={quizQuestions} />
               </div>
             }
@@ -84,7 +84,7 @@ function AppContent({ problems, setProblems, quizQuestions, setQuizQuestions }) 
           <Route
             path="/practice/:id"
             element={
-              <div className="h-full overflow-hidden">
+              <div className="page-scroll-container practice-scroll-container h-full overflow-hidden">
                 <Practice
                   problems={problems}
                   completedIds={completedIds}
@@ -97,7 +97,7 @@ function AppContent({ problems, setProblems, quizQuestions, setQuizQuestions }) 
           <Route
             path="/admin"
             element={
-              <div className="h-full overflow-y-auto">
+              <div className="page-scroll-container h-full overflow-y-auto overflow-x-hidden">
                 <Admin
                   problems={problems}
                   onProblemsChange={setProblems}

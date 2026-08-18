@@ -1,12 +1,13 @@
 // src/components/admin/AdminPanel.jsx
 // 교사용 PIN 인증 및 문제 CRUD 모달 패널
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Lock, Plus, Pencil, Trash2, Save, X, ShieldCheck, Check, Info, Search, Filter, Eye, EyeOff, CloudUpload, Download, Upload, ArrowUpDown, GripVertical, RotateCcw, History } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Lock, Plus, Pencil, Trash2, Save, X, ShieldCheck, Check, Info, Search, Filter, Eye, EyeOff, CloudUpload, Download, Upload, ArrowUpDown, GripVertical, RotateCcw, History, AlertTriangle } from 'lucide-react';
 import { saveProblem, deleteProblemFromDB, saveQuizQuestion, deleteQuizQuestionFromDB, saveVersionSnapshot, fetchVersionSnapshots, deleteVersionSnapshot } from '../../config/firebase';
 
-const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN;
+const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || 'comedu2026';
 
 const EMOJI_CATEGORIES = [
   { name: '디지털/기기', emojis: ['📱', '💻', '🖥️', '🤖', '⏰', '🎮', '🔍', '⚙️', '🔋', '📷', '🎧', '📡'] },
@@ -102,16 +103,76 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
-  // Version History Modal State
+  // Version History Modal State & Version Delete Confirm State
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [versionList, setVersionList] = useState([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
-  const [selectedVersionForRestore, setSelectedVersionForRestore] = useState(null);
+  const [deleteVersionConfirm, setDeleteVersionConfirm] = useState(null); // { id, dateStr, note }
 
   // Drag and drop state & Order History for Undo
   const [draggedId, setDraggedId] = useState(null);
   const [orderedProblems, setOrderedProblems] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]); // Stack of previous problem lists for Undo
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // 순서 또는 숨김 변경 시 true
+  const [showUnsavedWarningModal, setShowUnsavedWarningModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // () => void
+
+  const navigate = useNavigate();
+
+  // 브라우저 탭 닫기/새로고침 및 헤더 홈 버튼 클릭 시 미저장 경고
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    const handleRequestNavigateHome = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault(); // 기본 Header의 navigate('/') 방지
+        setPendingAction(() => () => navigate('/', { state: { resetHome: Date.now() } }));
+        setShowUnsavedWarningModal(true);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('request-navigate-home', handleRequestNavigateHome);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('request-navigate-home', handleRequestNavigateHome);
+    };
+  }, [hasUnsavedChanges, navigate]);
+
+  // 페이지/탭 이탈 가드 함수
+  function requestNavigation(action) {
+    if (hasUnsavedChanges) {
+      setPendingAction(() => action);
+      setShowUnsavedWarningModal(true);
+    } else {
+      action();
+    }
+  }
+
+  function handleDiscardAndProceed() {
+    setHasUnsavedChanges(false);
+    setOrderHistory([]);
+    setShowUnsavedWarningModal(false);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  }
+
+  async function handleSaveAndProceed() {
+    await handleSyncToDB();
+    setShowUnsavedWarningModal(false);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  }
 
   async function openVersionModal(type) {
     setShowVersionModal(true);
@@ -127,12 +188,26 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     }
   }
 
-  async function handleDeleteVersion(versionId) {
+  async function confirmDeleteVersion(ver) {
+    setDeleteVersionConfirm(ver);
+  }
+
+  async function executeDeleteVersion() {
+    if (!deleteVersionConfirm) return;
+    const versionId = deleteVersionConfirm.id;
     const type = mainSectionTab === 'quiz' ? 'quiz' : 'problems';
-    await deleteVersionSnapshot(type, versionId);
-    setVersionList((prev) => prev.filter((v) => v.id !== versionId));
-    setSyncMsg('🗑️ 해당 버전 스냅샷이 삭제되었습니다.');
-    setTimeout(() => setSyncMsg(''), 4000);
+    try {
+      await deleteVersionSnapshot(type, versionId);
+      setVersionList((prev) => prev.filter((v) => v.id !== versionId));
+      setSyncMsg('🗑️ 해당 버전 스냅샷이 영구 삭제되었습니다.');
+      setTimeout(() => setSyncMsg(''), 4000);
+    } catch (e) {
+      console.error(e);
+      setSyncMsg('❌ 버전 삭제 실패');
+      setTimeout(() => setSyncMsg(''), 4000);
+    } finally {
+      setDeleteVersionConfirm(null);
+    }
   }
 
   async function handleRestoreVersion(versionItem) {
@@ -212,28 +287,18 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     }
 
     const nextList = orderedProblems;
-    const moved = nextList.find((p) => p.id === draggedId);
 
     // Save previous state to history before committing new order
     setOrderHistory((prev) => [...prev, problems]);
+    setHasUnsavedChanges(true);
 
     setDraggedId(null);
     setOrderedProblems(null);
 
+    // 순서 변경은 로컬 상태에만 반영 (수동 [DB 저장] 버튼 클릭 시에만 DB/디스크/버전 반영)
     onProblemsChange(nextList);
-    saveToDiskFile(nextList);
-
-    if (moved) {
-      setSyncing(true);
-      setSyncMsg('☁️ 변경된 순서를 DB에 저장 중...');
-      saveProblem(moved)
-        .then(() => {
-          setSyncMsg('✅ 문제 순서 반영 완료!');
-          setTimeout(() => setSyncMsg(''), 5000);
-        })
-        .catch((err) => console.warn(err))
-        .finally(() => setSyncing(false));
-    }
+    setSyncMsg('⚠️ 문제 순서가 변경되었습니다. 상단 [DB 저장]을 눌러야 최종 반영됩니다.');
+    setTimeout(() => setSyncMsg(''), 4000);
   }
 
   function handleCardDragEnd() {
@@ -241,24 +306,20 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     setOrderedProblems(null);
   }
 
-  // 순서 변경 되돌리기 (Undo)
-  function handleUndoReorder() {
+  // 변경사항 되돌리기 (Undo)
+  function handleUndoChanges() {
     if (orderHistory.length === 0) return;
     const previousList = orderHistory[orderHistory.length - 1];
-    setOrderHistory((prev) => prev.slice(0, -1));
+    const newHistory = orderHistory.slice(0, -1);
+    setOrderHistory(newHistory);
+    if (newHistory.length === 0) {
+      setHasUnsavedChanges(false);
+    }
 
+    // 이전 상태로 로컬 되돌리기
     onProblemsChange(previousList);
-    saveToDiskFile(previousList);
-
-    setSyncing(true);
-    setSyncMsg('↩️ 이전 문제 순서로 복구 중...');
-    Promise.all(previousList.map((p) => saveProblem(p)))
-      .then(() => {
-        setSyncMsg('✅ 이전 순서로 되돌리기 완료!');
-        setTimeout(() => setSyncMsg(''), 5000);
-      })
-      .catch((err) => console.warn(err))
-      .finally(() => setSyncing(false));
+    setSyncMsg('↩️ 최근 변경사항을 이전 상태로 되돌렸습니다.');
+    setTimeout(() => setSyncMsg(''), 3000);
   }
 
   function saveToDiskFile(list) {
@@ -278,9 +339,9 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       }
       saveToDiskFile(problems);
       // Automatically record a timestamped version snapshot
-      const snapshot = await saveVersionSnapshot('problems', problems, 'DB 직접 저장');
-      setSyncMsg(`✅ 구글 DB 저장 및 버전 기록 완료! (${snapshot?.dateStr || '방금'})`);
-      setTimeout(() => setSyncMsg(''), 5000);
+      await recordVersionSnapshot('problems', problems, '수동 DB 직접 저장', true);
+      setHasUnsavedChanges(false);
+      setOrderHistory([]);
     } catch (e) {
       console.error(e);
       setSyncMsg('❌ DB 전송 실패: Firestore 규칙을 확인해 주세요.');
@@ -462,9 +523,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
         await saveQuizQuestion(q);
       }
       // Automatically record a timestamped version snapshot for quizzes
-      const snapshot = await saveVersionSnapshot('quiz', quizQuestions, '개념 퀴즈 DB 저장');
-      setSyncMsg(`✅ 개념 퀴즈 DB 저장 및 버전 기록 완료! (${snapshot?.dateStr || '방금'})`);
-      setTimeout(() => setSyncMsg(''), 5000);
+      await recordVersionSnapshot('quiz', quizQuestions, '수동 개념 퀴즈 DB 저장', true);
     } catch (e) {
       console.error(e);
       setSyncMsg('❌ 퀴즈 DB 전송 실패: Firestore 규칙을 확인해 주세요.');
@@ -564,6 +623,21 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     setShowEmojiPicker(false);
   }
 
+  // 공통 버전 스냅샷 기록 함수 (수동/자동 저장 시 버전 및 수정 로그 생성)
+  async function recordVersionSnapshot(type, dataList, note = '', showNotification = false) {
+    try {
+      const snapshot = await saveVersionSnapshot(type, dataList, note);
+      if (showNotification && snapshot?.dateStr) {
+        const typeLabel = type === 'quiz' ? '개념 퀴즈' : '실생활 문제';
+        setSyncMsg(`✅ ${typeLabel} DB 저장 및 버전 기록 완료! (${snapshot.dateStr})`);
+        setTimeout(() => setSyncMsg(''), 5000);
+      }
+      return snapshot;
+    } catch (e) {
+      console.warn(`[${type}] 버전 스냅샷 기록 실패:`, e);
+    }
+  }
+
   function handleSave() {
     if (!editForm.title.trim()) {
       alert('문제 제목을 입력해주세요.');
@@ -574,10 +648,27 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       return;
     }
 
+    const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    let logNote = '';
+
     let updatedList;
     if (isAdding) {
       updatedList = [...problems, editForm];
+      logNote = `[${timeStr}] 자동저장: [${editForm.id}] '${editForm.title}' 신규 추가`;
     } else {
+      const original = problems.find((p) => p.id === editingOriginalId);
+      const changedFields = [];
+      if (original) {
+        if (original.title !== editForm.title) changedFields.push('제목');
+        if (original.category !== editForm.category) changedFields.push('카테고리');
+        if (original.emoji !== editForm.emoji) changedFields.push('이모지');
+        if (original.description !== editForm.description) changedFields.push('설명');
+        if (JSON.stringify(original.step1) !== JSON.stringify(editForm.step1)) changedFields.push('1단계');
+        if (JSON.stringify(original.step2) !== JSON.stringify(editForm.step2)) changedFields.push('2단계');
+        if (JSON.stringify(original.step3) !== JSON.stringify(editForm.step3)) changedFields.push('3단계');
+      }
+      const fieldSummary = changedFields.length > 0 ? ` (${changedFields.join(', ')} 수정)` : '';
+      logNote = `[${timeStr}] 자동저장: [${editForm.id}] '${editForm.title}'${fieldSummary}`;
       updatedList = problems.map((p) => (p.id === editingOriginalId ? editForm : p));
     }
 
@@ -593,10 +684,15 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     // Sync to DB in background safely without blocking
     saveProblem(editForm).catch((err) => console.warn('DB sync postponed:', err));
 
+    // 자동 저장 시 버전 및 변경 로그 스냅샷 기록
+    recordVersionSnapshot('problems', updatedList, logNote);
+
     closeModal();
   }
 
   function handleDelete(id) {
+    const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const target = problems.find((p) => p.id === id);
     const updatedList = problems.filter((p) => p.id !== id);
 
     // Update local state & localStorage & disk initialProblems.js instantly
@@ -605,6 +701,10 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
 
     // Sync to DB in background safely without blocking
     deleteProblemFromDB(id).catch((err) => console.warn('DB delete postponed:', err));
+
+    // 삭제 시 버전 및 변경 로그 스냅샷 기록
+    const logNote = `[${timeStr}] 자동저장: [${id}] '${target?.title || ''}' 삭제`;
+    recordVersionSnapshot('problems', updatedList, logNote);
 
     setDeleteConfirm(null);
   }
@@ -648,23 +748,46 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       return;
     }
 
+    const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    let logNote = '';
+
     let updatedQuizList;
     if (isAddingQuiz) {
       updatedQuizList = [...quizQuestions, quizForm];
+      logNote = `[${timeStr}] 자동저장: 문항 #${quizForm.id} 신규 추가`;
     } else {
+      const original = quizQuestions.find((q) => q.id === quizForm.id);
+      const changedFields = [];
+      if (original) {
+        if (original.question !== quizForm.question) changedFields.push('질문');
+        if (original.correctAnswer !== quizForm.correctAnswer) changedFields.push('정답');
+        if (JSON.stringify(original.options) !== JSON.stringify(quizForm.options)) changedFields.push('보기');
+        if (original.explanation !== quizForm.explanation) changedFields.push('해설');
+      }
+      const fieldSummary = changedFields.length > 0 ? ` (${changedFields.join(', ')} 수정)` : '';
+      logNote = `[${timeStr}] 자동저장: 문항 #${quizForm.id}${fieldSummary}`;
       updatedQuizList = quizQuestions.map((q) => (q.id === quizForm.id ? quizForm : q));
     }
 
     onQuizQuestionsChange(updatedQuizList);
     saveQuizQuestion(quizForm).catch((e) => console.warn('Quiz DB sync error:', e));
 
+    // 퀴즈 자동 저장 시 버전 및 변경 로그 스냅샷 기록
+    recordVersionSnapshot('quiz', updatedQuizList, logNote);
+
     closeQuizModal();
   }
 
   function handleQuizDelete(id) {
+    const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const updatedList = quizQuestions.filter((q) => q.id !== id);
     onQuizQuestionsChange(updatedList);
     deleteQuizQuestionFromDB(id).catch((e) => console.warn('Quiz DB delete error:', e));
+
+    // 퀴즈 삭제 시 버전 및 변경 로그 스냅샷 기록
+    const logNote = `[${timeStr}] 자동저장: 문항 #${id} 삭제`;
+    recordVersionSnapshot('quiz', updatedList, logNote);
+
     setDeleteQuizConfirm(null);
   }
 
@@ -679,12 +802,16 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     }
     const currentHidden = Boolean(problem.hidden);
     const updated = { ...problem, hidden: !currentHidden };
+    const nextProblems = problems.map((p) => (p.id === problem.id ? updated : p));
 
-    // Update state immediately for instant UI feedback
-    onProblemsChange(problems.map((p) => (p.id === problem.id ? updated : p)));
+    // 변경 전 상태 히스토리 보관 및 미저장 플래그 설정
+    setOrderHistory((prev) => [...prev, problems]);
+    setHasUnsavedChanges(true);
 
-    // Save to Firebase in background without blocking UI
-    saveProblem(updated).catch((err) => console.warn('Firebase sync warning:', err));
+    // Update state immediately for instant UI feedback (수동 [DB 저장] 버튼으로 최종 저장)
+    onProblemsChange(nextProblems);
+    setSyncMsg(`⚠️ [${problem.title || problem.id}] 공개 상태가 변경되었습니다. 상단 [DB 저장]을 눌러야 최종 반영됩니다.`);
+    setTimeout(() => setSyncMsg(''), 4000);
   }
 
   // Source list to display: during drag, use live ordered list; otherwise normal problems list
@@ -800,7 +927,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               <span>⚙️ 관리자 메뉴</span>
             </h1>
             <button
-              onClick={() => setAuthenticated(false)}
+              onClick={() => requestNavigation(() => setAuthenticated(false))}
               className="text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1 cursor-pointer bg-slate-100 hover:bg-slate-200 py-1.5 px-2.5 rounded-xl transition-colors"
               title="로그아웃"
             >
@@ -829,48 +956,48 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                 type="button"
                 onClick={() => document.getElementById('quiz-file-upload-input')?.click()}
                 disabled={syncing}
-                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all disabled:opacity-50"
+                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 text-xs px-2.5 rounded-xl cursor-pointer font-bold transition-all disabled:opacity-50 shrink-0"
                 title="수정된 개념 퀴즈 .js 또는 .json 파일 선택 업로드"
               >
-                <Upload size={14} className="text-slate-600" />
-                <span>.js 업로드</span>
+                <Upload size={13} className="text-slate-600" />
+                <span>업로드</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleQuizDownloadFile}
-                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all"
+                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 text-xs px-2.5 rounded-xl cursor-pointer font-bold transition-all shrink-0"
                 title="현재 개념 퀴즈 데이터 세트를 initialQuizQuestions.js 파일로 내보내기 다운로드"
               >
-                <Download size={14} className="text-slate-600" />
-                <span>.js 다운로드</span>
+                <Download size={13} className="text-slate-600" />
+                <span>다운로드</span>
               </button>
 
               <button
                 onClick={handleSyncQuizToDB}
                 disabled={syncing}
-                className="h-9 bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1.5 text-xs px-3.5 rounded-xl cursor-pointer font-extrabold shadow-2xs hover:shadow-xs transition-all disabled:opacity-50"
+                className="h-9 bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 text-xs px-3 rounded-xl cursor-pointer font-black shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 shrink-0"
                 title="현재 전체 개념 퀴즈 데이터를 구글 Firestore 클라우드 DB로 전송합니다."
               >
-                <CloudUpload size={15} />
-                <span>{syncing ? 'DB 저장 중...' : 'DB 저장'}</span>
+                <CloudUpload size={14} />
+                <span>{syncing ? '저장 중...' : 'DB 저장'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => openVersionModal('quiz')}
-                className="h-9 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all shadow-2xs"
+                className="h-9 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1 text-xs px-2.5 rounded-xl cursor-pointer font-bold transition-all shadow-2xs shrink-0"
                 title="개념 퀴즈 저장 일시/버전 기록 목록 및 복원·삭제 관리"
               >
-                <History size={14} className="text-amber-600" />
+                <History size={13} className="text-amber-600" />
                 <span>버전 관리</span>
               </button>
 
               <button
                 onClick={startQuizAdd}
-                className="h-9 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 px-3.5"
+                className="h-9 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center gap-1 px-3 shrink-0"
               >
-                <Plus size={15} />
+                <Plus size={14} />
                 <span>퀴즈 추가</span>
               </button>
             </>
@@ -881,13 +1008,13 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               {orderHistory.length > 0 && (
                 <button
                   type="button"
-                  onClick={handleUndoReorder}
+                  onClick={handleUndoChanges}
                   disabled={syncing}
-                  className="h-9 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all disabled:opacity-50 shadow-2xs"
-                  title={`최근 순서 변경 되돌리기 (남은 기록: ${orderHistory.length}회)`}
+                  className="h-9 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 text-xs px-2.5 rounded-xl cursor-pointer font-black transition-all disabled:opacity-50 shadow-2xs shrink-0 animate-fade-in"
+                  title={`순서/숨김 등 최근 변경사항 되돌리기 (남은 기록: ${orderHistory.length}회)`}
                 >
-                  <RotateCcw size={14} className="text-amber-600" />
-                  <span>순서 되돌리기 ({orderHistory.length})</span>
+                  <RotateCcw size={13} className="text-amber-700 shrink-0" />
+                  <span>변경 되돌리기({orderHistory.length})</span>
                 </button>
               )}
 
@@ -895,48 +1022,48 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                 type="button"
                 onClick={() => document.getElementById('file-upload-input')?.click()}
                 disabled={syncing}
-                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all disabled:opacity-50"
+                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 text-xs px-2.5 rounded-xl cursor-pointer font-bold transition-all disabled:opacity-50 shrink-0"
                 title="수정된 문제 .js 또는 .json 파일 선택 업로드"
               >
-                <Upload size={14} className="text-slate-600" />
-                <span>.js 업로드</span>
+                <Upload size={13} className="text-slate-600" />
+                <span>업로드</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleDownloadFile}
-                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all"
+                className="h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1 text-xs px-2.5 rounded-xl cursor-pointer font-bold transition-all shrink-0"
                 title="현재 문제 데이터 세트를 버전 포함 .js 파일로 다운로드 백업"
               >
-                <Download size={14} className="text-slate-600" />
-                <span>.js 다운로드</span>
+                <Download size={13} className="text-slate-600" />
+                <span>다운로드</span>
               </button>
 
               <button
                 onClick={handleSyncToDB}
                 disabled={syncing}
-                className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 text-xs px-3.5 rounded-xl cursor-pointer font-extrabold shadow-2xs hover:shadow-xs transition-all disabled:opacity-50"
+                className={`h-9 text-white flex items-center gap-1 text-xs px-3 rounded-xl cursor-pointer font-black shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 shrink-0 ${hasUnsavedChanges ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400 ring-offset-1 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 title="현재 전체 문제 데이터를 구글 Firestore 클라우드 DB로 전송합니다."
               >
-                <CloudUpload size={15} />
-                <span>{syncing ? 'DB 저장 중...' : 'DB 저장'}</span>
+                <CloudUpload size={14} />
+                <span>{syncing ? '저장 중...' : 'DB 저장'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => openVersionModal('problems')}
-                className="h-9 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1.5 text-xs px-3 rounded-xl cursor-pointer font-extrabold transition-all shadow-2xs"
+                className="h-9 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1 text-xs px-2.5 rounded-xl cursor-pointer font-bold transition-all shadow-2xs shrink-0"
                 title="실생활 문제 저장 일시/버전 기록 목록 및 복원·삭제 관리"
               >
-                <History size={14} className="text-indigo-600" />
+                <History size={13} className="text-indigo-600" />
                 <span>버전 관리</span>
               </button>
 
               <button
                 onClick={startAdd}
-                className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 px-3.5"
+                className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl cursor-pointer shadow-sm hover:shadow-md transition-all flex items-center gap-1 px-3 shrink-0"
               >
-                <Plus size={15} />
+                <Plus size={14} />
                 <span>문제 추가</span>
               </button>
             </>
@@ -947,7 +1074,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       {/* Main Section Navigation Tabs (개념 퀴즈가 왼쪽에 오도록 순서 배치) */}
       <div className="flex border-b border-slate-200 mb-5 gap-2">
         <button
-          onClick={() => setMainSectionTab('quiz')}
+          onClick={() => requestNavigation(() => setMainSectionTab('quiz'))}
           className={`pb-2.5 px-4 text-sm font-black transition-all border-b-2 cursor-pointer ${mainSectionTab === 'quiz'
               ? 'border-amber-500 text-amber-600'
               : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -956,7 +1083,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
           💡 개념 퀴즈 문제 편집 ({quizQuestions.length})
         </button>
         <button
-          onClick={() => setMainSectionTab('problems')}
+          onClick={() => requestNavigation(() => setMainSectionTab('problems'))}
           className={`pb-2.5 px-4 text-sm font-black transition-all border-b-2 cursor-pointer ${mainSectionTab === 'problems'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -2346,7 +2473,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                         복원
                       </button>
                       <button
-                        onClick={() => handleDeleteVersion(ver.id)}
+                        onClick={() => confirmDeleteVersion(ver)}
                         className="w-7 h-7 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition-all cursor-pointer border border-rose-100"
                         title="이 버전 기록 영구 삭제"
                       >
@@ -2366,6 +2493,42 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold cursor-pointer transition-colors"
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Version Delete Confirmation Modal (추가 팝업 경고창: 복원 불가 안내) */}
+      {deleteVersionConfirm && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fade-up">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-rose-200 text-center space-y-4 animate-bounce-in">
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-xs">
+              <AlertTriangle size={28} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800 mb-1">버전 기록 영구 삭제</h3>
+              <p className="text-xs text-rose-600 font-extrabold mb-1">
+                ⚠️ 삭제된 버전 기록은 다시 복원할 수 없습니다!
+              </p>
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <strong>[{deleteVersionConfirm.dateStr}]</strong><br />
+                {deleteVersionConfirm.note ? `로그: ${deleteVersionConfirm.note}` : '이 스냅샷'}을 영구히 삭제하시겠습니까?
+              </p>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setDeleteVersionConfirm(null)}
+                className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                onClick={executeDeleteVersion}
+                className="flex-1 py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-xl text-xs shadow-md hover:shadow-lg transition-all cursor-pointer"
+              >
+                영구 삭제
               </button>
             </div>
           </div>
@@ -2403,6 +2566,53 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               >
                 초기화 실행
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Unsaved Changes Warning Modal (미저장 상태 이탈 경고 모달) */}
+      {showUnsavedWarningModal && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fade-up">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-200 text-center space-y-4 animate-bounce-in">
+            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-xs">
+              <AlertTriangle size={28} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-800 mb-1">저장되지 않은 변경사항</h3>
+              <p className="text-xs text-amber-700 font-extrabold mb-1.5">
+                문제 순서 또는 공개/숨김 상태 변경 내용이 아직 DB에 저장되지 않았습니다!
+              </p>
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed bg-amber-50/70 p-2.5 rounded-xl border border-amber-100">
+                저장하지 않고 이동하면 변경된 순서 및 공개 상태가 <strong>초기화(유실)</strong>됩니다.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                onClick={handleSaveAndProceed}
+                className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <CloudUpload size={14} />
+                <span>DB 저장 후 이동</span>
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowUnsavedWarningModal(false);
+                    setPendingAction(null);
+                  }}
+                  className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl text-xs transition-all cursor-pointer"
+                >
+                  취소 (머무르기)
+                </button>
+                <button
+                  onClick={handleDiscardAndProceed}
+                  className="flex-1 py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-extrabold rounded-xl text-xs transition-all cursor-pointer"
+                >
+                  저장 안 함
+                </button>
+              </div>
             </div>
           </div>
         </div>,
