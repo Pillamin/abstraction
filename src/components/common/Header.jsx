@@ -57,13 +57,13 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
                 <span>추상화</span>
               </a>
               <div className="w-px h-3.5 bg-slate-300 mx-1"></div>
-              <a
-                href="#"
+              <button
+                onClick={() => window.open("https://algorithm-two-pi.vercel.app/", "_blank", "noopener,noreferrer")}
                 className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 text-slate-600 bg-transparent hover:text-indigo-600 hover:bg-indigo-50/70"
               >
                 <span>📜</span>
                 <span>알고리즘</span>
-              </a>
+              </button>
               <div className="w-px h-3.5 bg-slate-300 mx-1"></div>
               <button
                 onClick={() => window.open("https://flowchart-drawer.vercel.app/", "_blank", "noopener,noreferrer")}
