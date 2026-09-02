@@ -12,7 +12,7 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
   return (
     <>
       <header className="sticky top-0 z-20 bg-white border-b border-slate-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4 relative">
+        <div className="max-w-7xl w-full mx-auto px-6 h-14 flex items-center justify-between gap-4 relative">
           {/* Left section: Home Button + Main Title */}
           <div className="flex items-center gap-3 sm:gap-6 z-10">
             <button
@@ -48,39 +48,37 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
 
           {/* Center section: Top Navigation Menu Bar */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center z-10 whitespace-nowrap">
-            <nav className="flex items-center gap-1 sm:gap-2">
-              <button
-                onClick={() => navigate('/learn', { state: { mode: 'SLIDES' } })}
-                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                  location.pathname === '/learn' && (!location.state || location.state?.mode === 'SLIDES')
-                    ? 'bg-indigo-100 text-indigo-800'
-                    : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/70'
-                }`}
+            <nav className="flex items-center gap-1">
+              <a
+                href="#"
+                className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 bg-indigo-100 text-indigo-800"
               >
-                <span>📖</span>
-                <span>개념 학습</span>
+                <span>🧩</span>
+                <span>추상화</span>
+              </a>
+              <div className="w-px h-3.5 bg-slate-300 mx-1"></div>
+              <a
+                href="#"
+                className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 text-slate-600 bg-transparent hover:text-indigo-600 hover:bg-indigo-50/70"
+              >
+                <span>📜</span>
+                <span>알고리즘</span>
+              </a>
+              <div className="w-px h-3.5 bg-slate-300 mx-1"></div>
+              <button
+                onClick={() => window.open("https://flowchart-drawer.vercel.app/", "_blank", "noopener,noreferrer")}
+                className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 text-slate-600 bg-transparent hover:text-indigo-600 hover:bg-indigo-50/70"
+              >
+                <span>✍️</span>
+                <span>알고리즘 작성</span>
               </button>
+              <div className="w-px h-3.5 bg-slate-300 mx-1"></div>
               <button
-                onClick={() => navigate('/learn', { state: { mode: 'QUIZ' } })}
-                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                  location.pathname === '/learn' && location.state?.mode === 'QUIZ'
-                    ? 'bg-purple-100 text-purple-800'
-                    : 'text-slate-600 hover:text-purple-600 hover:bg-purple-50/70'
-                }`}
+                onClick={() => window.open("https://updown-algorithm-analysis.vercel.app/", "_blank", "noopener,noreferrer")}
+                className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 text-slate-600 bg-transparent hover:text-indigo-600 hover:bg-indigo-50/70"
               >
-                <span>📝</span>
-                <span>개념 퀴즈</span>
-              </button>
-              <button
-                onClick={() => navigate('/practice')}
-                className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                  location.pathname.startsWith('/practice')
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'text-slate-600 hover:text-emerald-600 hover:bg-emerald-50/70'
-                }`}
-              >
-                <span>✏️</span>
-                <span>실생활 문제</span>
+                <span>📊</span>
+                <span>알고리즘 분석</span>
               </button>
             </nav>
           </div>
