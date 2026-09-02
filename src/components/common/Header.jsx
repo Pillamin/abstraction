@@ -16,17 +16,11 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
           {/* Left section: Home Button + Main Title */}
           <div className="flex items-center gap-3 sm:gap-6 z-10">
             <button
-              onClick={() => {
-                const event = new CustomEvent('request-navigate-home', { cancelable: true });
-                const notCancelled = window.dispatchEvent(event);
-                if (notCancelled) {
-                  navigate('/', { state: { resetHome: Date.now() } });
-                }
-              }}
-              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-black text-sm sm:text-base cursor-pointer shrink-0 transition-colors"
-              title="홈으로 이동"
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2 text-indigo-600 font-black text-sm sm:text-base cursor-pointer shrink-0"
+              title="새로고침"
             >
-              <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors">
+              <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-50">
                 <HomeIcon size={20} />
               </div>
               <span className="hidden lg:inline font-black text-slate-800 tracking-tight select-none">
@@ -49,13 +43,13 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
           {/* Center section: Top Navigation Menu Bar */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center z-10 whitespace-nowrap">
             <nav className="flex items-center gap-1">
-              <a
-                href="#"
-                className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 bg-indigo-100 text-indigo-800"
+              <button
+                onClick={() => window.location.reload()}
+                className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold cursor-pointer flex items-center gap-1.5 bg-indigo-100 text-indigo-800"
               >
                 <span>🧩</span>
                 <span>추상화</span>
-              </a>
+              </button>
               <div className="w-px h-3.5 bg-slate-300 mx-1"></div>
               <button
                 onClick={() => window.open("https://algorithm-two-pi.vercel.app/", "_blank", "noopener,noreferrer")}
