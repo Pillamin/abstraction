@@ -52,8 +52,8 @@ const STORY_STEPS = [
     stepDesc: '문제 해결의 출발점(초기)과 진행(현재), 도착점(목표)을 명확하게 정의하는 단계입니다.',
     stateBoxes: [
       { label: '초기 상태', badgeColor: 'bg-blue-600', border: 'border-blue-200 bg-blue-50/70', desc: '문제를 시작할 때의 상황 및 주어진 데이터', example: '성적표(국어 80, 수학 90)가 준비된 상태' },
-      { label: '현재 상태', badgeColor: 'bg-amber-600', border: 'border-amber-200 bg-amber-50/70', desc: '문제를 해결해 나가는 중간 진행 과정', example: '점수를 합산하여 평균을 계산하는 상태' },
-      { label: '목표 상태', badgeColor: 'bg-emerald-600', border: 'border-emerald-200 bg-emerald-50/70', desc: '목표에 도달하여 문제가 최종 해결된 결과 상황', example: '목표 평균 점수(85점)가 출력된 상태' },
+      { label: '현재 상태', badgeColor: 'bg-amber-600', border: 'border-amber-200 bg-amber-50/70', desc: '현재 상황', example: '점수를 합산하여 평균을 계산하는 상태' },
+      { label: '목표 상태', badgeColor: 'bg-emerald-600', border: 'border-emerald-200 bg-emerald-50/70', desc: '목표에 도달하여 문제가 해결된 상황', example: '목표 평균 점수(85점)가 출력된 상태' },
     ],
     highlight: '초기 상태에서 출발하여 목표 상태에 도달하는 것이 문제 해결입니다.'
   },
@@ -74,7 +74,7 @@ const STORY_STEPS = [
     badge: '6/6 단계',
     icon: '⚙️',
     title: '추상화 3단계: 문제 구조화',
-    stepDesc: '추출한 핵심 요소를 체계적으로 정리하는 단계입니다.',
+    stepDesc: '추출한 핵심 요소들을 정리 및 배열하여 통일된 구조로 만드는 단계입니다.',
     ipoCards: [
       { type: '입력', sub: '입력 데이터', desc: '문제를 해결하기 위해 컴퓨터에 넣는 데이터', bg: 'bg-indigo-50 border-indigo-200 text-indigo-900', badge: 'bg-indigo-600', example: '과목별 점수, 과목 수' },
       { type: '처리', sub: '계산 및 판단', desc: '데이터를 계산하고 판단하는 조건 및 규칙', bg: 'bg-amber-50 border-amber-200 text-amber-900', badge: 'bg-amber-600', example: '평균 점수 = (점수 합계) ÷ 과목 수' },
@@ -258,7 +258,7 @@ export default function ConceptIntroModal({ isOpen, onClose }) {
                 <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50 border-2 border-purple-200 text-center shadow-sm">
                   <p className="text-base sm:text-lg font-extrabold text-purple-950 leading-relaxed break-keep">
                     문제를 이해·분석하고, 핵심 요소만 추출한 뒤,<br />
-                    컴퓨터가 처리할 수 있는 형태로 구조화하는 과정
+                    단순한 형태로 구조화하는 과정
                   </p>
                 </div>
 
@@ -391,13 +391,13 @@ export default function ConceptIntroModal({ isOpen, onClose }) {
                         ) : (
                           <XCircle className="text-rose-500 shrink-0" size={20} />
                         )}
-                        <span className={`text-xs sm:text-sm font-black px-2.5 py-0.5 rounded-md shadow-xs ${
+                        <span className={`text-xs sm:text-sm font-semibold px-2.5 py-0.5 rounded-md shadow-xs ${
                           item.isGood ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'
                         }`}>
                           {item.tag}
                         </span>
                       </div>
-                      <p className="pl-7 pr-2 text-sm sm:text-base font-black text-slate-800 break-keep leading-relaxed text-left">
+                      <p className="pl-7 pr-2 text-sm sm:text-base font-medium text-slate-700 break-keep leading-relaxed text-left">
                         {item.title}
                       </p>
                     </div>
@@ -412,12 +412,12 @@ export default function ConceptIntroModal({ isOpen, onClose }) {
                   </div>
                   <div className="grid grid-cols-2 gap-3.5 pt-0.5">
                     <div className="flex items-start gap-2.5 bg-white/70 p-2.5 rounded-xl border border-indigo-100/80">
-                      <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">핵심</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-snug">국어 점수, 수학 점수, 영어 점수, 과목 수</span>
+                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">핵심</span>
+                      <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">국어 점수, 수학 점수, 영어 점수, 과목 수</span>
                     </div>
                     <div className="flex items-start gap-2.5 bg-white/70 p-2.5 rounded-xl border border-indigo-100/80">
-                      <span className="text-xs font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">비핵심</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-snug">성적표 종이 색상, 학생 옷 색상, 글씨 폰트</span>
+                      <span className="text-xs font-semibold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">비핵심</span>
+                      <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">성적표 종이 색상, 학생 옷 색상, 글씨 폰트</span>
                     </div>
                   </div>
                 </div>

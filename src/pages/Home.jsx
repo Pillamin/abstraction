@@ -1,188 +1,204 @@
 // src/pages/Home.jsx
-// 메인 / 문제 선택 화면 — 학생 입장 + 10개 카드 그리드
+// 메인 대시보드 — 3가지 학습 코스(개념 학습, 개념 퀴즈, 실생활 문제) 바로가기 및 실생활 문제 선택 화면
 
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Trophy, Lock, CheckCircle, ChevronRight, Sparkles, Lightbulb, BookOpen, GraduationCap } from 'lucide-react';
+import {
+  Trophy,
+  Lock,
+  CheckCircle,
+  ChevronRight,
+  Sparkles,
+  Lightbulb,
+  BookOpen,
+  GraduationCap,
+  CheckCircle2,
+  HelpCircle,
+  ArrowRight
+} from 'lucide-react';
 import ConceptIntroModal from '../components/common/ConceptIntroModal';
 
 export default function Home({ problems, completedIds, entered = false, setEntered }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isConceptModalOpen, setIsConceptModalOpen] = useState(false);
 
-  const completedCount = completedIds.size;
+  // 학습 상태 로컬스토리지 확인
+  const [learnDone, setLearnDone] = useState(false);
+  const [quizDone, setQuizDone] = useState(false);
+
+  useEffect(() => {
+    setLearnDone(localStorage.getItem('abstraction_learn_completed') === 'true');
+    setQuizDone(localStorage.getItem('abstraction_quiz_passed') === 'true');
+  }, [location]);
+
   const mainProblems = problems.filter((p) => !p.isTutorial && !p.hidden);
   const mainCompleted = mainProblems.filter((p) => completedIds.has(p.id)).length;
   const total = mainProblems.length;
+  const problemsDone = mainCompleted === total && total > 0;
 
-  const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
   const [isIncompleteModalOpen, setIsIncompleteModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (entered) {
-      const tutorialDone = localStorage.getItem('abstraction_tutorial_first_done') === 'true';
-      if (!tutorialDone) {
-        navigate('/practice/problem_practice');
-      }
-    }
-  }, [entered, navigate]);
+  const isPracticeRoute = location.pathname.startsWith('/practice') || location.state?.showGrid || entered;
 
-  const handleStartClick = () => {
-    const isPassed = localStorage.getItem('abstraction_quiz_passed') === 'true';
-    if (isPassed) {
-      setIsChoiceModalOpen(true);
-    } else {
-      setIsNoticeModalOpen(true);
-    }
-  };
-
-  const handleGoToProblems = () => {
-    setIsChoiceModalOpen(false);
-    const tutorialDone = localStorage.getItem('abstraction_tutorial_first_done') === 'true';
-    if (!tutorialDone) {
-      navigate('/practice/problem_practice');
-    } else {
-      setEntered(true);
-    }
-  };
-
-  if (!entered) {
+  // 메인 대시보드 (홈 URL이고 /practice가 아닐 때 3개 카드 대시보드 표시)
+  if (!isPracticeRoute) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] px-6 text-center">
-        {/* Hero */}
-        <div className="mb-8 animate-fade-up">
-          <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-sm font-semibold px-4 py-2 rounded-full mb-6">
-            <Sparkles size={16} />
-            중학교 정보 수업
+      <div className="flex flex-col items-center justify-center min-h-[85vh] px-4 py-8 max-w-5xl mx-auto">
+        {/* Hero Section */}
+        <div className="text-center mb-8 animate-fade-up">
+          <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-xs sm:text-sm font-extrabold px-4 py-1.5 rounded-full mb-4 shadow-2xs">
+            <Sparkles size={16} className="text-indigo-600" />
+            중학교 정보
           </div>
-          <div className="mb-6">
-            <h1 className="text-6xl font-extrabold text-indigo-500 tracking-tight leading-none">
-              추상화
-            </h1>
-            <p className="text-slate-400 text-2xl font-semibold mt-2">
-              (Abstraction)
-            </p>
-          </div>
-          <p className="text-slate-500 text-lg max-w-lg mx-auto leading-relaxed">
-            일상 속 다양한 상황을 통해<br />
-            추상화를 재미있게 배워보세요! 🧩
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-800 tracking-tight leading-tight mb-3">
+            추상화 <span className="text-indigo-600">(Abstraction)</span>
+          </h1>
+          <p className="text-slate-500 text-base sm:text-lg font-bold max-w-xl mx-auto leading-relaxed break-keep">
+            단계별 활동을 통해 추상화를 학습해봅시다.
           </p>
         </div>
 
-        {/* CTA */}
-        <div className="flex items-center justify-center animate-fade-up" style={{ animationDelay: '0.1s' }}>
-          <button
-            onClick={handleStartClick}
-            className="btn-primary text-xl px-10 py-5 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all cursor-pointer rounded-2xl min-w-[260px] font-black transform hover:-translate-y-0.5"
+        {/* 3 Main Course Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mb-8 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+          {/* Card 1: 개념 학습 */}
+          <div
+            onClick={() => navigate('/learn', { state: { mode: 'SLIDES' } })}
+            className={`card-bento p-6 rounded-3xl border-2 flex flex-col justify-between cursor-pointer transition-all duration-200 group relative overflow-hidden hover:-translate-y-1.5 hover:shadow-xl ${
+              learnDone
+                ? 'bg-white border-emerald-300 ring-2 ring-emerald-100 shadow-md'
+                : 'bg-white border-slate-200 hover:border-slate-400 shadow-sm'
+            }`}
           >
-            <span>🚀</span>
-            학습 시작
-            <ChevronRight size={24} />
-          </button>
+            <div className="absolute top-4 right-4">
+              {learnDone ? (
+                <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-full border border-emerald-200 shadow-2xs">
+                  <CheckCircle2 size={14} className="text-emerald-600" />
+                  학습 완료
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-xs font-extrabold px-2.5 py-1 rounded-full">
+                  미완료
+                </span>
+              )}
+            </div>
+
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform">
+                📖
+              </div>
+              <span className="text-xs font-extrabold text-indigo-600 uppercase tracking-wider">Step 1</span>
+              <h2 className="text-xl font-black text-slate-800 mt-1 mb-2 group-hover:text-indigo-600 transition-colors">
+                개념 학습
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 font-bold leading-relaxed break-keep">
+                문제의 정의부터 상태 정의, 핵심 요소 추출, IPO 구조화까지 6단계 슬라이드로 학습합니다.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs font-black text-slate-600">6개 개념 카드</span>
+              <span className="inline-flex items-center gap-1 text-xs font-black text-indigo-600 group-hover:translate-x-1 transition-transform">
+                학습하기 <ChevronRight size={16} />
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: 개념 퀴즈 */}
+          <div
+            onClick={() => navigate('/learn', { state: { mode: 'QUIZ' } })}
+            className={`card-bento p-6 rounded-3xl border-2 flex flex-col justify-between cursor-pointer transition-all duration-200 group relative overflow-hidden hover:-translate-y-1.5 hover:shadow-xl ${
+              quizDone
+                ? 'bg-white border-emerald-300 ring-2 ring-emerald-100 shadow-md'
+                : 'bg-white border-slate-200 hover:border-slate-400 shadow-sm'
+            }`}
+          >
+            <div className="absolute top-4 right-4">
+              {quizDone ? (
+                <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-black px-2.5 py-1 rounded-full border border-purple-200 shadow-2xs">
+                  <CheckCircle2 size={14} className="text-purple-600" />
+                  학습 완료
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-xs font-extrabold px-2.5 py-1 rounded-full">
+                  미완료
+                </span>
+              )}
+            </div>
+
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform">
+                📝
+              </div>
+              <span className="text-xs font-extrabold text-purple-600 uppercase tracking-wider">Step 2</span>
+              <h2 className="text-xl font-black text-slate-800 mt-1 mb-2 group-hover:text-purple-600 transition-colors">
+                개념 퀴즈
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 font-bold leading-relaxed break-keep">
+                학습한 추상화 개념을 10문항 객관식 퀴즈로 풀고 즉시 피드백과 정답 해설을 확인합니다.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs font-black text-slate-600">10문항 퀴즈</span>
+              <span className="inline-flex items-center gap-1 text-xs font-black text-purple-600 group-hover:translate-x-1 transition-transform">
+                퀴즈 풀기 <ChevronRight size={16} />
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: 실생활 문제 */}
+          <div
+            onClick={() => navigate('/practice')}
+            className={`card-bento p-6 rounded-3xl border-2 flex flex-col justify-between cursor-pointer transition-all duration-200 group relative overflow-hidden hover:-translate-y-1.5 hover:shadow-xl ${
+              problemsDone
+                ? 'bg-white border-emerald-300 ring-2 ring-emerald-100 shadow-md'
+                : 'bg-white border-slate-200 hover:border-slate-400 shadow-sm'
+            }`}
+          >
+            <div className="absolute top-4 right-4">
+              {problemsDone ? (
+                <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-full border border-emerald-300 shadow-2xs">
+                  <Trophy size={14} className="text-emerald-600" />
+                  마스터 완료!
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-extrabold px-2.5 py-1 rounded-full border border-emerald-200">
+                  {mainCompleted} / {total} 완료
+                </span>
+              )}
+            </div>
+
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 transition-transform">
+                ✏️
+              </div>
+              <span className="text-xs font-extrabold text-emerald-600 uppercase tracking-wider">Step 3</span>
+              <h2 className="text-xl font-black text-slate-800 mt-1 mb-2 group-hover:text-emerald-600 transition-colors">
+                실생활 문제
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 font-bold leading-relaxed break-keep">
+                성적 계산, 버스 요금, 쓰레기 분리수거 등 다양한 실생활 문제를 3단계로 해결합니다.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs font-black text-slate-600">총 {total}개 실생활 문제</span>
+              <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-600 group-hover:translate-x-1 transition-transform">
+                문제 풀러가기 <ChevronRight size={16} />
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Notice Modal for First-time / Non-passed Users */}
-        {isNoticeModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-up">
-            <div className="bg-white rounded-3xl p-7 max-w-md w-full shadow-2xl border border-indigo-100 text-center space-y-5 animate-bounce-in">
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-sm">
-                🧩
-              </div>
-              <div>
-                <h3 className="text-2xl font-black text-slate-800 mb-1.5">추상화 학습 안내</h3>
-                <p className="text-xs sm:text-sm text-slate-500 font-bold leading-relaxed">
-                  개념을 학습한 후 퀴즈 10문항을 모두 맞혀야<br />실생활 문제 풀기로 넘어갈 수 있습니다.
-                </p>
-              </div>
 
-              <div className="bg-indigo-50/80 border-2 border-indigo-200 rounded-2xl p-4 text-left space-y-2.5">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base shrink-0">📖</span>
-                  <p className="text-xs sm:text-sm font-extrabold text-indigo-950">
-                    <strong className="text-indigo-600">1단계:</strong> 추상화 개념 학습
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base shrink-0">📝</span>
-                  <p className="text-xs sm:text-sm font-extrabold text-indigo-950">
-                    <strong className="text-indigo-600">2단계:</strong> 추상화 퀴즈 객관식 10개 풀기
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5 pt-1 border-t border-indigo-200/80">
-                  <span className="text-base shrink-0">🏆</span>
-                  <p className="text-xs sm:text-sm font-black text-indigo-900 leading-relaxed">
-                    퀴즈 10문항을 <span className="text-purple-600 underline decoration-purple-300">모두 맞혀야</span> 실생활 문제 풀기가 열립니다!
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex flex-col gap-2 pt-1">
-                <button
-                  onClick={() => {
-                    setIsNoticeModalOpen(false);
-                    navigate('/learn');
-                  }}
-                  className="btn-primary text-base py-4 px-6 rounded-2xl font-black flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg transition-all"
-                >
-                  <span>🚀</span>
-                  <span>확인 및 학습 시작하기</span>
-                  <ChevronRight size={20} />
-                </button>
-                <button
-                  onClick={() => setIsNoticeModalOpen(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600 font-bold underline cursor-pointer pt-1"
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Choice Modal for Passed Users */}
-        {isChoiceModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-up">
-            <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-indigo-100 text-center space-y-6">
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-                🎓
-              </div>
-              <div>
-                <h3 className="text-2xl font-black text-slate-800 mb-2">이동할 메뉴를 선택하세요</h3>
-                <p className="text-sm text-slate-500 font-semibold leading-relaxed">
-                  이미 개념 퀴즈를 모두 통과하셨습니다!<br />원하는 학습 메뉴를 선택해주세요.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => {
-                    setIsChoiceModalOpen(false);
-                    navigate('/learn');
-                  }}
-                  className="btn-secondary text-base py-4 px-6 rounded-2xl font-black border-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md transition-all"
-                >
-                  <span>📖</span>
-                  <span>개념 학습 & 퀴즈 풀러가기</span>
-                </button>
-                <button
-                  onClick={handleGoToProblems}
-                  className="btn-primary text-base py-4 px-6 rounded-2xl font-black flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg transition-all"
-                >
-                  <span>✏️</span>
-                  <span>실생활 문제 풀러가기</span>
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-              <button
-                onClick={() => setIsChoiceModalOpen(false)}
-                className="text-xs text-slate-400 hover:text-slate-600 font-bold underline cursor-pointer"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Concept Modal */}
+        <ConceptIntroModal
+          isOpen={isConceptModalOpen}
+          onClose={() => setIsConceptModalOpen(false)}
+        />
       </div>
     );
   }
@@ -263,7 +279,9 @@ export default function Home({ problems, completedIds, entered = false, setEnter
                 {isDone ? (
                   <CheckCircle size={20} className="text-emerald-500" />
                 ) : (
-                  <Lock size={16} className="text-slate-300" />
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">
+                    도전
+                  </span>
                 )}
               </div>
 
@@ -298,7 +316,7 @@ export default function Home({ problems, completedIds, entered = false, setEnter
       </div>
 
       {/* All complete */}
-      {completedCount === problems.length && (
+      {mainCompleted === total && total > 0 && (
         <div className="mt-10 card-bento bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 text-center py-10 animate-bounce-in">
           <p className="text-5xl mb-4">🏆</p>
           <h2 className="text-2xl font-extrabold text-indigo-700 mb-2">모든 문제를 해결했어요!</h2>

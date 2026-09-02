@@ -82,6 +82,19 @@ function AppContent({ problems, setProblems, quizQuestions, setQuizQuestions }) 
             }
           />
           <Route
+            path="/practice"
+            element={
+              <div className="page-scroll-container h-full overflow-y-auto overflow-x-hidden">
+                <Home
+                  problems={problems}
+                  completedIds={completedIds}
+                  entered={true}
+                  setEntered={setEntered}
+                />
+              </div>
+            }
+          />
+          <Route
             path="/practice/:id"
             element={
               <div className="page-scroll-container practice-scroll-container h-full overflow-hidden">

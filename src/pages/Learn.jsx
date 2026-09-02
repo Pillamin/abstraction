@@ -1,8 +1,5 @@
-// src/pages/Learn.jsx
-// 개념 학습 슬라이드 (1~6단계) + 10개 객관식 퀴즈 (랜덤 셔플 + 결과창 오답 해설 + 10/10 통과 시 문제풀이 이동)
-
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -67,8 +64,8 @@ const STORY_STEPS = [
     stepDesc: '문제 해결의 출발점(초기)과 진행(현재), 도착점(목표)을 명확하게 정의하는 단계입니다.',
     stateBoxes: [
       { label: '초기 상태', badgeColor: 'bg-blue-600', border: 'border-blue-200 bg-blue-50/70', desc: '문제를 시작할 때의 상황 및 주어진 데이터', example: '성적표(국어 80, 수학 90)가 준비된 상태' },
-      { label: '현재 상태', badgeColor: 'bg-amber-600', border: 'border-amber-200 bg-amber-50/70', desc: '문제를 해결해 나가는 중간 진행 과정', example: '점수를 합산하여 평균을 계산하는 상태' },
-      { label: '목표 상태', badgeColor: 'bg-emerald-600', border: 'border-emerald-200 bg-emerald-50/70', desc: '목표에 도달하여 문제가 최종 해결된 결과 상황', example: '최종 평균 점수(85점)가 출력된 상태' },
+      { label: '현재 상태', badgeColor: 'bg-amber-600', border: 'border-amber-200 bg-amber-50/70', desc: '현재 상황', example: '점수를 합산하여 평균을 계산하는 상태' },
+      { label: '목표 상태', badgeColor: 'bg-emerald-600', border: 'border-emerald-200 bg-emerald-50/70', desc: '목표에 도달하여 문제가 해결된 상황', example: '최종 평균 점수(85점)가 출력된 상태' },
     ],
     highlight: '초기 상태에서 출발하여 목표 상태에 도달하는 것이 문제 해결입니다.'
   },
@@ -89,7 +86,7 @@ const STORY_STEPS = [
     badge: '6/6 단계',
     icon: '⚙️',
     title: '추상화 3단계: 문제 구조화',
-    stepDesc: '추출한 핵심 요소를 체계적으로 정리하는 단계입니다.',
+    stepDesc: '추출한 핵심 요소들을 정리 및 배열하여 통일된 구조로 만드는 단계입니다.',
     ipoCards: [
       { type: '입력', sub: '입력 데이터', desc: '문제를 해결하기 위해 컴퓨터에 넣는 데이터', bg: 'bg-indigo-50 border-indigo-200 text-indigo-900', badge: 'bg-indigo-600', example: '과목별 점수, 과목 수' },
       { type: '처리', sub: '계산 및 판단', desc: '데이터를 계산하고 판단하는 조건 및 규칙', bg: 'bg-amber-50 border-amber-200 text-amber-900', badge: 'bg-amber-600', example: '평균 점수 = (점수 합계) ÷ 과목 수' },
@@ -378,9 +375,10 @@ function shuffleArray(array) {
 
 export default function Learn({ quizPool }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Mode: 'SLIDES' | 'QUIZ' | 'RESULT'
-  const [mode, setMode] = useState('SLIDES');
+  const [mode, setMode] = useState(() => (location.state?.mode === 'QUIZ' ? 'QUIZ' : 'SLIDES'));
   const [slideIdx, setSlideIdx] = useState(0);
 
   // Quiz state
@@ -408,6 +406,30 @@ export default function Learn({ quizPool }) {
     setMode('QUIZ');
   }
 
+  // Handle route mode changes
+  useEffect(() => {
+    if (location.state?.mode === 'QUIZ') {
+      startQuiz();
+    } else if (location.state?.mode === 'SLIDES') {
+      setMode('SLIDES');
+      setSlideIdx(0);
+    }
+  }, [location.state]);
+
+  // Initial load for quiz mode if directly accessed
+  useEffect(() => {
+    if (mode === 'QUIZ' && quizQuestions.length === 0) {
+      startQuiz();
+    }
+  }, [mode]);
+
+  // Mark conceptual learn as completed when reaching the last slide (Slide 6)
+  useEffect(() => {
+    if (mode === 'SLIDES' && slideIdx === STORY_STEPS.length - 1) {
+      localStorage.setItem('abstraction_learn_completed', 'true');
+    }
+  }, [mode, slideIdx]);
+
   // Handle choice select
   function handleSelectAnswer(option) {
     setUserAnswers((prev) => ({
@@ -432,7 +454,7 @@ export default function Learn({ quizPool }) {
       };
     });
 
-    const passed = score >= 9; // 9문항 이상(90점 이상) 통과
+    const passed = score === quizQuestions.length; // 10/10 만점 통과
 
     if (passed) {
       localStorage.setItem('abstraction_quiz_passed', 'true');
@@ -447,7 +469,7 @@ export default function Learn({ quizPool }) {
     if (!tutorialDone) {
       navigate('/practice/problem_practice');
     } else {
-      navigate('/', { state: { showGrid: true } });
+      navigate('/practice');
     }
   }
 
@@ -598,7 +620,7 @@ export default function Learn({ quizPool }) {
                   <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50 border-2 border-purple-200 text-center shadow-sm">
                     <p className="text-base sm:text-lg font-extrabold text-purple-950 leading-relaxed break-keep">
                       문제를 이해·분석하고, 핵심 요소만 추출한 뒤,<br />
-                      컴퓨터가 처리할 수 있는 형태로 구조화하는 과정
+                      단순한 형태로 구조화하는 과정
                     </p>
                   </div>
 
@@ -727,12 +749,12 @@ export default function Learn({ quizPool }) {
                           ) : (
                             <XCircle className="text-rose-500 shrink-0" size={20} />
                           )}
-                          <span className={`text-xs sm:text-sm font-black px-2.5 py-0.5 rounded-md shadow-xs ${item.isGood ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'
+                          <span className={`text-xs sm:text-sm font-semibold px-2.5 py-0.5 rounded-md shadow-xs ${item.isGood ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'
                             }`}>
                             {item.tag}
                           </span>
                         </div>
-                        <p className="pl-7 pr-2 text-sm sm:text-base font-black text-slate-800 break-keep leading-relaxed text-left">
+                        <p className="pl-7 pr-2 text-sm sm:text-base font-medium text-slate-700 break-keep leading-relaxed text-left">
                           {item.title}
                         </p>
                       </div>
@@ -746,12 +768,12 @@ export default function Learn({ quizPool }) {
                     </div>
                     <div className="grid grid-cols-2 gap-3.5 pt-0.5">
                       <div className="flex items-start gap-2.5 bg-white/70 p-2.5 rounded-xl border border-indigo-100/80">
-                        <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">핵심</span>
-                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-snug">국어 점수, 수학 점수, 영어 점수, 과목 수</span>
+                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">핵심</span>
+                        <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">국어 점수, 수학 점수, 영어 점수, 과목 수</span>
                       </div>
                       <div className="flex items-start gap-2.5 bg-white/70 p-2.5 rounded-xl border border-indigo-100/80">
-                        <span className="text-xs font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">비핵심</span>
-                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-snug">성적표 종이 색상, 학생 옷 색상, 글씨 폰트</span>
+                        <span className="text-xs font-semibold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">비핵심</span>
+                        <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">성적표 종이 색상, 학생 옷 색상, 글씨 폰트</span>
                       </div>
                     </div>
                   </div>
@@ -871,12 +893,14 @@ export default function Learn({ quizPool }) {
                 </button>
               ) : (
                 <button
-                  onClick={startQuiz}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs sm:text-sm py-2.5 px-6 rounded-2xl font-black shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5 animate-bounce-in leading-none"
+                  onClick={() => {
+                    localStorage.setItem('abstraction_learn_completed', 'true');
+                    navigate('/', { state: { resetHome: Date.now() } });
+                  }}
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs sm:text-sm py-2.5 px-6 rounded-2xl font-black shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5 animate-bounce-in leading-none"
                 >
-                  <span>📝</span>
-                  <span>퀴즈 풀기</span>
-                  <ArrowRight size={16} />
+                  <span>🏁</span>
+                  <span>학습 완료</span>
                 </button>
               )}
             </div>
@@ -1010,41 +1034,36 @@ export default function Learn({ quizPool }) {
 
             {/* CTA Buttons */}
             <div className="flex items-center justify-center gap-3 flex-wrap">
-              {scoreResult.passed ? (
-                <button
-                  onClick={handleGoToProblems}
-                  className="btn-primary text-sm px-6 py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer font-black transform hover:-translate-y-0.5 animate-bounce-in"
-                >
-                  <span>✏️</span>
-                  <span>실생활 문제 풀러가기</span>
-                  <ChevronRight size={18} />
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={startQuiz}
-                    className="btn-primary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
-                  >
-                    <RotateCcw size={16} />
-                    <span>퀴즈 다시 풀기</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSlideIdx(0);
-                      setMode('SLIDES');
-                    }}
-                    className="btn-secondary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
-                  >
-                    <BookOpen size={16} />
-                    <span>다시 학습하기</span>
-                  </button>
-                </>
-              )}
+              <button
+                onClick={handleGoToProblems}
+                className="btn-primary text-xs sm:text-sm px-6 py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer font-black transform hover:-translate-y-0.5"
+              >
+                <span>✏️</span>
+                <span>실생활 문제 풀러가기</span>
+                <ChevronRight size={18} />
+              </button>
+              <button
+                onClick={startQuiz}
+                className="btn-secondary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
+              >
+                <RotateCcw size={16} />
+                <span>퀴즈 다시 풀기</span>
+              </button>
+              <button
+                onClick={() => {
+                  setSlideIdx(0);
+                  setMode('SLIDES');
+                }}
+                className="btn-secondary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
+              >
+                <BookOpen size={16} />
+                <span>개념 다시 학습하기</span>
+              </button>
             </div>
 
             {!scoreResult.passed && (
-              <p className="text-[11px] text-rose-500 font-extrabold mt-2">
-                ※ 10개 중 9개 이상(90점 이상)을 맞혀야 실생활 문제 풀러가기 버튼이 열립니다! 아래 오답 카드를 클릭하여 해설을 확인하세요.
+              <p className="text-[11px] text-amber-700 font-extrabold mt-2">
+                ※ 10문항을 모두 맞히면 [개념 퀴즈 학습 완료] 뱃지가 부여됩니다! 아래 오답 카드를 클릭하여 정답 해설을 확인해보세요.
               </p>
             )}
           </div>
