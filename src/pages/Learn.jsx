@@ -63,9 +63,9 @@ const STORY_STEPS = [
     title: '추상화 1단계: 상태 정의하기',
     stepDesc: '문제 해결의 출발점(초기)과 진행(현재), 도착점(목표)을 명확하게 정의하는 단계입니다.',
     stateBoxes: [
-      { label: '초기 상태', badgeColor: 'bg-blue-600', border: 'border-blue-200 bg-blue-50/70', desc: '문제를 시작할 때의 상황 및 주어진 데이터', example: '성적표(국어 80, 수학 90)가 준비된 상태' },
-      { label: '현재 상태', badgeColor: 'bg-amber-600', border: 'border-amber-200 bg-amber-50/70', desc: '현재 상황', example: '점수를 합산하여 평균을 계산하는 상태' },
-      { label: '목표 상태', badgeColor: 'bg-emerald-600', border: 'border-emerald-200 bg-emerald-50/70', desc: '목표에 도달하여 문제가 해결된 상황', example: '최종 평균 점수(85점)가 출력된 상태' },
+      { label: '초기 상태', badgeClass: 'text-indigo-600 bg-indigo-50/80', containerClass: 'bg-slate-50/70', desc: '문제를 시작할 때의 상황 및 주어진 데이터', example: '성적표(국어 80, 수학 90)가 준비된 상태' },
+      { label: '현재 상태', badgeClass: 'text-indigo-600 bg-indigo-50/80', containerClass: 'bg-slate-50/70', desc: '현재 상황', example: '점수를 합산하여 평균을 계산하는 상태' },
+      { label: '목표 상태', badgeClass: 'text-indigo-600 bg-indigo-50/80', containerClass: 'bg-slate-50/70', desc: '목표에 도달하여 문제가 해결된 상황', example: '최종 평균 점수(85점)가 출력된 상태' },
     ],
     highlight: '초기 상태에서 출발하여 목표 상태에 도달하는 것이 문제 해결입니다.'
   },
@@ -88,9 +88,9 @@ const STORY_STEPS = [
     title: '추상화 3단계: 문제 구조화',
     stepDesc: '추출한 핵심 요소들을 정리 및 배열하여 통일된 구조로 만드는 단계입니다.',
     ipoCards: [
-      { type: '입력', sub: '입력 데이터', desc: '문제를 해결하기 위해 컴퓨터에 넣는 데이터', bg: 'bg-indigo-50 border-indigo-200 text-indigo-900', badge: 'bg-indigo-600', example: '과목별 점수, 과목 수' },
-      { type: '처리', sub: '계산 및 판단', desc: '데이터를 계산하고 판단하는 조건 및 규칙', bg: 'bg-amber-50 border-amber-200 text-amber-900', badge: 'bg-amber-600', example: '평균 점수 = (점수 합계) ÷ 과목 수' },
-      { type: '출력', sub: '최종 결과물', desc: '처리가 완료된 후 컴퓨터가 내보내는 결과', bg: 'bg-emerald-50 border-emerald-200 text-emerald-900', badge: 'bg-emerald-600', example: '평균 점수' },
+      { type: '입력', sub: '입력 데이터', desc: '문제를 해결하기 위해 컴퓨터에 넣는 데이터', bg: 'bg-indigo-50 border-indigo-200 text-indigo-900', badgeClass: 'text-indigo-600 bg-indigo-100/80', example: '과목별 점수, 과목 수' },
+      { type: '처리', sub: '계산 및 판단', desc: '데이터를 계산하고 판단하는 조건 및 규칙', bg: 'bg-indigo-50 border-indigo-200 text-indigo-900', badgeClass: 'text-indigo-600 bg-indigo-100/80', example: '평균 점수 = (점수 합계) ÷ 과목 수' },
+      { type: '출력', sub: '최종 결과물', desc: '처리가 완료된 후 컴퓨터가 내보내는 결과', bg: 'bg-indigo-50 border-indigo-200 text-indigo-900', badgeClass: 'text-indigo-600 bg-indigo-100/80', example: '평균 점수' },
     ],
     highlight: '개념 학습 완료! 이제 퀴즈 10문항을 풀어봅시다.'
   }
@@ -477,687 +477,696 @@ export default function Learn({ quizPool }) {
   const currentQuiz = quizQuestions[quizIdx];
 
   return (
-    <div className="h-full w-full flex items-center justify-center p-4 overflow-hidden">
-      {/* MODE 1: CONCEPT SLIDES (데스크톱: 780px x 600px, 모바일: 반응형 및 스크롤 지원) */}
-      {mode === 'SLIDES' && (
-        <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
-          {/* Header Bar */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <span className="bg-indigo-100 text-indigo-700 text-xs font-extrabold px-3 py-1 rounded-full">
-                {currentSlide.badge}
-              </span>
-              <span className="text-slate-400 text-xs font-semibold">
-                개념 학습 슬라이드
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold">
-              <span>{slideIdx + 1}</span>
-              <span>/</span>
-              <span>{STORY_STEPS.length}</span>
-            </div>
-          </div>
-
-          {/* Dynamic Card Content Area */}
-          <div className="my-2 flex-1 flex flex-col justify-between overflow-hidden animate-fade-up" key={slideIdx}>
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <span className="text-lg sm:text-xl shrink-0">{currentSlide.icon}</span>
-                <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">
-                  {currentSlide.title}
-                </h3>
+    <div className="h-full w-full flex items-center justify-center p-4 overflow-hidden relative">
+      <div className="relative w-full max-w-[780px]">
+        {/* 메인 콘텐츠 바깥 왼쪽 위 모서리에 떠 있는 버튼 */}
+        <button
+          onClick={() => navigate('/', { state: { resetHome: Date.now() } })}
+          className="absolute top-0 -left-[105px] flex items-center gap-1.5 bg-white/80 backdrop-blur hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-2 rounded-xl text-sm font-extrabold transition-all cursor-pointer shadow-sm hover:shadow-md z-50"
+        >
+          <span className="text-lg leading-none">←</span>
+          <span>메인화면</span>
+        </button>
+        {/* MODE 1: CONCEPT SLIDES (데스크톱: 780px x 600px, 모바일: 반응형 및 스크롤 지원) */}
+        {mode === 'SLIDES' && (
+          <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
+            {/* Header Bar */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="bg-indigo-100 text-indigo-700 text-xs font-extrabold px-3 py-1 rounded-full">
+                  {currentSlide.badge}
+                </span>
+                <span className="text-slate-400 text-xs font-semibold">
+                  개념 학습 슬라이드
+                </span>
               </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold">
+                <span>{slideIdx + 1}</span>
+                <span>/</span>
+                <span>{STORY_STEPS.length}</span>
+              </div>
+            </div>
 
-              {/* SLIDE 1: TYPE_1_PROBLEM */}
-              {currentSlide.type === 'TYPE_1_PROBLEM' && (
-                <div className="space-y-4 mb-2">
-                  <div className="p-3.5 rounded-2xl bg-indigo-50 border-2 border-indigo-200 text-center shadow-sm">
-                    <p className="text-base sm:text-lg font-extrabold text-indigo-950 leading-relaxed break-keep">
-                      <span className="text-indigo-600 underline decoration-indigo-300">
-                        생활 속에서 해결해야 하는 질문 또는 과제
-                      </span>
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
-                      <span className="text-lg sm:text-xl">📌</span>
-                      <span>실생활 예시</span>
-                    </p>
-                    <div className="grid grid-cols-3 gap-2.5">
-                      {currentSlide.examples.map((ex, i) => (
-                        <div key={i} className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-start items-start min-h-[85px] shadow-xs">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <span className="text-base">{ex.icon}</span>
-                            <span className="text-xs font-black text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-md">{ex.tag}</span>
-                          </div>
-                          <span className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">{ex.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
-                      <span className="text-lg sm:text-xl">💻</span>
-                      <span>컴퓨터로 문제를 해결하면 좋은 점</span>
-                    </p>
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
-                        <span className="text-base shrink-0">⚡</span>
-                        <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
-                          많은 문제나 데이터를 빠르고 정확하게 처리
-                        </p>
-                      </div>
-                      <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
-                        <span className="text-base shrink-0">🔄</span>
-                        <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
-                          반복적인 복잡한 작업을 실수 없이 자동 수행
-                        </p>
-                      </div>
-                      <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
-                        <span className="text-base shrink-0">💾</span>
-                        <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
-                          방대한 자료를 안전하게 저장하고 빠른 검색
-                        </p>
-                      </div>
-                      <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
-                        <span className="text-base shrink-0">🌐</span>
-                        <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
-                          장소 제약 없이 결과를 쉽게 공유하고 협업
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+            {/* Dynamic Card Content Area */}
+            <div className="my-2 flex-1 flex flex-col justify-between overflow-hidden animate-fade-up" key={slideIdx}>
+              <div>
+                <div className="mb-2 flex items-center gap-1.5">
+                  <span className="text-lg sm:text-xl shrink-0">{currentSlide.icon}</span>
+                  <h3 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">
+                    {currentSlide.title}
+                  </h3>
                 </div>
-              )}
 
-              {/* SLIDE 2: TYPE_2_SOLVING_PROCESS */}
-              {currentSlide.type === 'TYPE_2_SOLVING_PROCESS' && (
-                <div className="flex items-start justify-center gap-6 pt-5 pb-2">
-                  <div className="flex flex-col gap-2 w-[250px] shrink-0">
-                    {currentSlide.flowSteps.map((step) => (
-                      <div
-                        key={step.num}
-                        className={`flex items-center gap-3 p-2.5 rounded-2xl border-2 transition-all shadow-xs ${step.isAbstraction
+                {/* SLIDE 1: TYPE_1_PROBLEM */}
+                {currentSlide.type === 'TYPE_1_PROBLEM' && (
+                  <div className="space-y-4 mb-2">
+                    <div className="p-3.5 rounded-2xl bg-indigo-50 border-2 border-indigo-200 text-center shadow-sm">
+                      <p className="text-base sm:text-lg font-extrabold text-indigo-950 leading-relaxed break-keep">
+                        <span className="text-indigo-600 underline decoration-indigo-300">
+                          생활 속에서 해결해야 하는 질문 또는 과제
+                        </span>
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
+                        <span className="text-lg sm:text-xl">📌</span>
+                        <span>실생활 예시</span>
+                      </p>
+                      <div className="grid grid-cols-3 gap-2.5">
+                        {currentSlide.examples.map((ex, i) => (
+                          <div key={i} className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-start items-start min-h-[85px] shadow-xs">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-base">{ex.icon}</span>
+                              <span className="text-xs font-black text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-md">{ex.tag}</span>
+                            </div>
+                            <span className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">{ex.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
+                        <span className="text-lg sm:text-xl">💻</span>
+                        <span>컴퓨터로 문제를 해결하면 좋은 점</span>
+                      </p>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
+                          <span className="text-base shrink-0">⚡</span>
+                          <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
+                            많은 문제나 데이터를 빠르고 정확하게 처리
+                          </p>
+                        </div>
+                        <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
+                          <span className="text-base shrink-0">🔄</span>
+                          <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
+                            반복적인 복잡한 작업을 실수 없이 자동 수행
+                          </p>
+                        </div>
+                        <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
+                          <span className="text-base shrink-0">💾</span>
+                          <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
+                            방대한 자료를 안전하게 저장하고 빠른 검색
+                          </p>
+                        </div>
+                        <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 shadow-xs">
+                          <span className="text-base shrink-0">🌐</span>
+                          <p className="text-slate-800 font-extrabold text-sm leading-snug break-keep text-left">
+                            장소 제약 없이 결과를 쉽게 공유하고 협업
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SLIDE 2: TYPE_2_SOLVING_PROCESS */}
+                {currentSlide.type === 'TYPE_2_SOLVING_PROCESS' && (
+                  <div className="flex items-start justify-center gap-6 pt-5 pb-2">
+                    <div className="flex flex-col gap-2 w-[250px] shrink-0">
+                      {currentSlide.flowSteps.map((step) => (
+                        <div
+                          key={step.num}
+                          className={`flex items-center gap-3 p-2.5 rounded-2xl border-2 transition-all shadow-xs ${step.isAbstraction
                             ? 'border-emerald-400 bg-emerald-50/50'
                             : 'border-slate-200 bg-white'
-                          }`}
-                      >
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${step.isAbstraction ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'
-                          }`}>
-                          {step.num}
-                        </span>
-                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">
-                          {step.title}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-col justify-start shrink-0 pt-0.5">
-                    <svg className="w-7 h-[146px] text-emerald-500" viewBox="0 0 24 100" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                      <path d="M 4 5 Q 18 5 18 25 L 18 40 Q 18 50 24 50 Q 18 50 18 60 L 18 75 Q 18 95 4 95" />
-                    </svg>
-                  </div>
-
-                  <div className="w-[300px] shrink-0 flex flex-col justify-center h-[146px] pt-0.5">
-                    <div className="p-4 sm:p-5 rounded-3xl bg-emerald-50 border-2 border-emerald-300 shadow-sm flex flex-col gap-2">
-                      <span className="text-base sm:text-lg font-black text-emerald-800 border-b border-emerald-200 pb-1 inline-block">
-                        추상화
-                      </span>
-                      <p className="text-xs sm:text-sm font-extrabold text-emerald-950 leading-relaxed break-keep">
-                        1~3단계를 통틀어 <span className="text-emerald-700 font-black underline underline-offset-4">추상화</span>라고 합니다.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* SLIDE 3: TYPE_3_ABSTRACTION */}
-              {currentSlide.type === 'TYPE_3_ABSTRACTION' && (
-                <div className="space-y-4 mb-2">
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50 border-2 border-purple-200 text-center shadow-sm">
-                    <p className="text-base sm:text-lg font-extrabold text-purple-950 leading-relaxed break-keep">
-                      문제를 이해·분석하고, 핵심 요소만 추출한 뒤,<br />
-                      단순한 형태로 구조화하는 과정
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
-                      <span className="text-lg sm:text-xl">🚀</span>
-                      <span>문제 추상화 과정</span>
-                    </p>
-                    <div className="grid grid-cols-3 gap-2.5">
-                      <div className="p-2.5 rounded-2xl border-2 border-amber-200 bg-amber-50/70 flex flex-col justify-start items-start shadow-xs">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">1</span>
-                          <span className="text-xs sm:text-sm font-black text-amber-950 break-keep">상태 정의하기</span>
-                        </div>
-                        <span className="pl-7 pr-7 text-xs sm:text-sm font-bold text-slate-700 leading-snug break-keep text-left">
-                          초기·현재·목표 상태를 명확하게 정의
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-2xl border-2 border-amber-200 bg-amber-50/70 flex flex-col justify-start items-start shadow-xs">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">2</span>
-                          <span className="text-xs sm:text-sm font-black text-amber-950 break-keep">핵심 요소 추출</span>
-                        </div>
-                        <span className="pl-7 pr-7 text-xs sm:text-sm font-bold text-slate-700 leading-snug break-keep text-left">
-                          불필요한 정보를 제거하고<br />핵심 요소만 추출
-                        </span>
-                      </div>
-                      <div className="p-2.5 rounded-2xl border-2 border-amber-200 bg-amber-50/70 flex flex-col justify-start items-start shadow-xs">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">3</span>
-                          <span className="text-xs sm:text-sm font-black text-amber-950 break-keep">문제 구조화</span>
-                        </div>
-                        <span className="pl-7 pr-7 text-xs sm:text-sm font-bold text-slate-700 leading-snug break-keep text-left">
-                          추출한 핵심 요소를 체계적인 형태로 정리
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
-                      <span className="text-lg sm:text-xl">💡</span>
-                      <span>문제 추상화의 필요성</span>
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {currentSlide.bullets.map((b, i) => (
-                        <div key={i} className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2 text-slate-800 font-extrabold text-xs sm:text-sm shadow-xs">
-                          <span className="text-purple-600 text-base font-black shrink-0">✔</span>
-                          <span className="break-keep leading-snug">{b}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* SLIDE 4: TYPE_4_STEP1_STATE */}
-              {currentSlide.type === 'TYPE_4_STEP1_STATE' && (
-                <div className="space-y-4 my-auto py-1">
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-                    <p className="text-slate-800 font-extrabold text-sm sm:text-base leading-relaxed break-keep">
-                      {currentSlide.stepDesc}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3.5 items-stretch">
-                    <div className="flex-1 flex flex-col gap-2.5">
-                      {currentSlide.stateBoxes.map((sb, i) => (
-                        <div key={i} className={`p-3 rounded-2xl border-2 ${sb.border} flex items-center gap-3.5 h-[48px] shadow-sm transition-all hover:shadow-md`}>
-                          <span className={`inline-block text-xs font-black px-3 py-1.5 rounded-xl text-white shadow-xs shrink-0 w-[85px] text-center ${sb.badgeColor}`}>
-                            {sb.label}
-                          </span>
-                          <div className="flex-1 border-l-2 border-slate-200/60 pl-3">
-                            <p className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-relaxed text-left">
-                              {sb.desc}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="w-[285px] shrink-0 p-3.5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 flex flex-col justify-center shadow-sm">
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-indigo-200/80">
-                          <span className="text-base">💡</span>
-                          <span className="text-sm sm:text-base font-black text-indigo-950">성적 평균 계산 문제 실생활 예시</span>
-                        </div>
-                        <div className="space-y-3 text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-blue-700 bg-blue-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">초기</span>
-                            <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">과목별 점수를 아는 상태</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-amber-700 bg-amber-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">현재</span>
-                            <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균을 계산하고 있는 상태</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">목표</span>
-                            <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균 점수를 아는 상태</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* SLIDE 5: TYPE_5_STEP2_FEATURE */}
-              {currentSlide.type === 'TYPE_5_STEP2_FEATURE' && (
-                <div className="space-y-4 my-auto py-2">
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl shadow-xs">
-                    <p className="text-slate-800 font-extrabold text-sm sm:text-base leading-relaxed break-keep">
-                      {currentSlide.stepDesc}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {currentSlide.features.map((item, i) => (
-                      <div
-                        key={i}
-                        className={`p-4 sm:p-4.5 rounded-2xl border-2 flex flex-col justify-center min-h-[105px] shadow-sm transition-all hover:shadow-md ${item.isGood ? 'border-emerald-300 bg-emerald-50/70' : 'border-rose-300 bg-rose-50/70'
-                          }`}
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          {item.isGood ? (
-                            <CheckCircle2 className="text-emerald-600 shrink-0" size={20} />
-                          ) : (
-                            <XCircle className="text-rose-500 shrink-0" size={20} />
-                          )}
-                          <span className={`text-xs sm:text-sm font-semibold px-2.5 py-0.5 rounded-md shadow-xs ${item.isGood ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'
+                            }`}
+                        >
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${step.isAbstraction ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'
                             }`}>
-                            {item.tag}
+                            {step.num}
+                          </span>
+                          <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">
+                            {step.title}
                           </span>
                         </div>
-                        <p className="pl-7 pr-2 text-sm sm:text-base font-medium text-slate-700 break-keep leading-relaxed text-left">
-                          {item.title}
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col justify-start shrink-0 pt-0.5">
+                      <svg className="w-7 h-[146px] text-emerald-500" viewBox="0 0 24 100" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                        <path d="M 4 5 Q 18 5 18 25 L 18 40 Q 18 50 24 50 Q 18 50 18 60 L 18 75 Q 18 95 4 95" />
+                      </svg>
+                    </div>
+
+                    <div className="w-[300px] shrink-0 flex flex-col justify-center h-[146px] pt-0.5">
+                      <div className="p-4 sm:p-5 rounded-3xl bg-emerald-50 border-2 border-emerald-300 shadow-sm flex flex-col gap-2">
+                        <span className="text-base sm:text-lg font-black text-emerald-800 border-b border-emerald-200 pb-1 inline-block">
+                          추상화
+                        </span>
+                        <p className="text-xs sm:text-sm font-extrabold text-emerald-950 leading-relaxed break-keep">
+                          1~3단계를 통틀어 <span className="text-emerald-700 font-black underline underline-offset-4">추상화</span>라고 합니다.
                         </p>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="p-4 rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 shadow-sm text-left space-y-2.5">
-                    <div className="flex items-center gap-1.5 pb-2 border-b border-indigo-200/80">
-                      <span className="text-base">💡</span>
-                      <span className="text-sm sm:text-base font-black text-indigo-950">성적 평균 계산 문제 실생활 예시</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3.5 pt-0.5">
-                      <div className="flex items-start gap-2.5 bg-white/70 p-2.5 rounded-xl border border-indigo-100/80">
-                        <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">핵심</span>
-                        <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">국어 점수, 수학 점수, 영어 점수, 과목 수</span>
-                      </div>
-                      <div className="flex items-start gap-2.5 bg-white/70 p-2.5 rounded-xl border border-indigo-100/80">
-                        <span className="text-xs font-semibold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md shrink-0 mt-0.5">비핵심</span>
-                        <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">성적표 종이 색상, 학생 옷 색상, 글씨 폰트</span>
-                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* SLIDE 6: TYPE_6_STEP3_IPO */}
-              {currentSlide.type === 'TYPE_6_STEP3_IPO' && (
-                <div className="space-y-3.5 my-auto py-1">
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl shadow-xs">
-                    <p className="text-slate-800 font-extrabold text-sm sm:text-base leading-relaxed break-keep">
-                      {currentSlide.stepDesc}
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-indigo-50/80 border border-indigo-200 shadow-2xs flex items-center gap-3 text-left">
-                    <span className="text-lg shrink-0">💡</span>
-                    <div className="flex-1">
-                      <span className="text-sm sm:text-base font-black text-indigo-950 inline-block mb-0.5">IPO(입력-처리-출력) 형태로 구조화하는 이유</span>
-                      <p className="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed break-keep">
-                        실제 컴퓨팅 시스템의 데이터 처리 절차 흐름을 쉽게 파악할 수 있어 문제를 체계적으로 정리하기에 좋습니다.
+                {/* SLIDE 3: TYPE_3_ABSTRACTION */}
+                {currentSlide.type === 'TYPE_3_ABSTRACTION' && (
+                  <div className="space-y-4 mb-2">
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50 border-2 border-purple-200 text-center shadow-sm">
+                      <p className="text-base sm:text-lg font-extrabold text-purple-950 leading-relaxed break-keep">
+                        문제를 이해·분석하고, 핵심 요소만 추출한 뒤,<br />
+                        단순한 형태로 구조화하는 과정
                       </p>
                     </div>
-                  </div>
 
-                  <div className="flex gap-3.5 items-stretch">
-                    <div className="flex-1 flex flex-col gap-2.5">
-                      {currentSlide.ipoCards.map((card, i) => (
-                        <div key={i} className={`p-3.5 rounded-2xl border-2 ${card.bg} flex items-center gap-3.5 shadow-sm transition-all hover:shadow-md`}>
-                          <span className={`inline-block text-xs sm:text-sm font-black px-3.5 py-1.5 rounded-xl text-white shadow-xs shrink-0 text-center ${card.badge}`}>
-                            {card.type}
-                          </span>
-                          <div className="flex-1 border-l-2 border-slate-200/60 pl-3.5">
-                            <p className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-relaxed text-left">
-                              {card.desc}
-                            </p>
+                    <div>
+                      <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
+                        <span className="text-lg sm:text-xl">🚀</span>
+                        <span>문제 추상화 과정</span>
+                      </p>
+                      <div className="grid grid-cols-3 gap-2.5">
+                        <div className="p-2.5 rounded-2xl border-2 border-amber-200 bg-amber-50/70 flex flex-col justify-start items-start shadow-xs">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">1</span>
+                            <span className="text-xs sm:text-sm font-black text-amber-950 break-keep">상태 정의하기</span>
                           </div>
+                          <span className="pl-7 pr-7 text-xs sm:text-sm font-bold text-slate-700 leading-snug break-keep text-left">
+                            초기·현재·목표 상태를 명확하게 정의
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-2xl border-2 border-amber-200 bg-amber-50/70 flex flex-col justify-start items-start shadow-xs">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">2</span>
+                            <span className="text-xs sm:text-sm font-black text-amber-950 break-keep">핵심 요소 추출</span>
+                          </div>
+                          <span className="pl-7 pr-7 text-xs sm:text-sm font-bold text-slate-700 leading-snug break-keep text-left">
+                            불필요한 정보를 제거하고<br />핵심 요소만 추출
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-2xl border-2 border-amber-200 bg-amber-50/70 flex flex-col justify-start items-start shadow-xs">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-black shrink-0">3</span>
+                            <span className="text-xs sm:text-sm font-black text-amber-950 break-keep">문제 구조화</span>
+                          </div>
+                          <span className="pl-7 pr-7 text-xs sm:text-sm font-bold text-slate-700 leading-snug break-keep text-left">
+                            추출한 핵심 요소를 체계적인 형태로 정리
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-base sm:text-lg font-black text-slate-800 mb-2 text-left flex items-center gap-1.5">
+                        <span className="text-lg sm:text-xl">💡</span>
+                        <span>문제 추상화의 필요성</span>
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {currentSlide.bullets.map((b, i) => (
+                          <div key={i} className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2 text-slate-800 font-extrabold text-xs sm:text-sm shadow-xs">
+                            <span className="text-purple-600 text-base font-black shrink-0">✔</span>
+                            <span className="break-keep leading-snug">{b}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SLIDE 4: TYPE_4_STEP1_STATE */}
+                {currentSlide.type === 'TYPE_4_STEP1_STATE' && (
+                  <div className="space-y-4 my-auto py-1">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                      <p className="text-slate-800 font-extrabold text-sm sm:text-base leading-relaxed break-keep">
+                        {currentSlide.stepDesc}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3.5 items-stretch">
+                      <div className="flex-1 flex flex-col gap-2.5">
+                        {currentSlide.stateBoxes.map((sb, i) => (
+                          <div key={i} className="py-2 px-3.5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/70 flex items-center gap-3.5 shadow-sm transition-all hover:shadow-md min-h-[48px]">
+                            <span className="text-sm sm:text-base font-black text-indigo-600 shrink-0 w-[75px] text-center">
+                              {sb.label}
+                            </span>
+                            <div className="flex-1 border-l-2 border-indigo-200/60 pl-3.5">
+                              <p className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-snug text-left">
+                                {sb.desc}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="w-[285px] shrink-0 p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 flex flex-col justify-center shadow-xs">
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-slate-200">
+                            <span className="text-base">💡</span>
+                            <span className="text-sm sm:text-base font-bold text-slate-800">성적 평균 계산 문제 실생활 예시</span>
+                          </div>
+                          <div className="space-y-3 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">초기</span>
+                              <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">과목별 점수를 아는 상태</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">현재</span>
+                              <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균을 계산하고 있는 상태</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">목표</span>
+                              <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균 점수를 아는 상태</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SLIDE 5: TYPE_5_STEP2_FEATURE */}
+                {currentSlide.type === 'TYPE_5_STEP2_FEATURE' && (
+                  <div className="space-y-4 my-auto py-2">
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl shadow-xs">
+                      <p className="text-slate-800 font-extrabold text-sm sm:text-base leading-relaxed break-keep">
+                        {currentSlide.stepDesc}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {currentSlide.features.map((item, i) => (
+                        <div
+                          key={i}
+                          className="p-4 sm:p-4.5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/70 flex flex-col justify-center min-h-[105px] shadow-sm transition-all hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            {item.isGood ? (
+                              <CheckCircle2 className="text-emerald-600 shrink-0" size={20} />
+                            ) : (
+                              <XCircle className="text-rose-500 shrink-0" size={20} />
+                            )}
+                            <span className={`text-xs sm:text-sm font-semibold px-2.5 py-0.5 rounded-md shadow-xs ${item.isGood ? 'bg-emerald-600 text-white' : 'bg-rose-500 text-white'
+                              }`}>
+                              {item.tag}
+                            </span>
+                          </div>
+                          <p className="pl-7 pr-2 text-sm sm:text-base font-medium text-slate-700 break-keep leading-relaxed text-left">
+                            {item.title}
+                          </p>
                         </div>
                       ))}
                     </div>
 
-                    <div className="w-[285px] shrink-0 p-3.5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 flex flex-col justify-center shadow-sm">
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-indigo-200/80">
-                          <span className="text-base">💡</span>
-                          <span className="text-sm sm:text-base font-black text-indigo-950">성적 평균 계산 문제 실생활 예시</span>
+                    <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 shadow-xs text-left space-y-2.5">
+                      <div className="flex items-center gap-1.5 pb-2 border-b border-slate-200">
+                        <span className="text-base">💡</span>
+                        <span className="text-sm sm:text-base font-bold text-slate-800">성적 평균 계산 문제 실생활 예시</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3.5 pt-0.5">
+                        <div className="flex items-start gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200/60 shadow-xs">
+                          <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0 mt-0.5 border border-emerald-200/50">핵심</span>
+                          <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">국어 점수, 수학 점수, 영어 점수, 과목 수</span>
                         </div>
-                        <div className="space-y-3 text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">입력</span>
-                            <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">과목별 점수, 과목 수</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-amber-700 bg-amber-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">처리</span>
-                            <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균 점수 = (점수 합계) ÷ 과목 수</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">출력</span>
-                            <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균 점수</span>
-                          </div>
+                        <div className="flex items-start gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200/60 shadow-xs">
+                          <span className="text-xs font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md shrink-0 mt-0.5 border border-rose-200/50">비핵심</span>
+                          <span className="text-xs sm:text-sm font-medium text-slate-700 break-keep leading-snug">성적표 종이 색상, 학생 옷 색상, 글씨 폰트</span>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Bottom Highlight (1, 2, 3, 6단계에서는 숨김) */}
-            {currentSlide.type !== 'TYPE_1_PROBLEM' && currentSlide.type !== 'TYPE_2_SOLVING_PROCESS' && currentSlide.type !== 'TYPE_3_ABSTRACTION' && currentSlide.type !== 'TYPE_6_STEP3_IPO' && (
-              <div className="flex flex-col gap-2 mt-2 shrink-0">
-                <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl text-xs sm:text-sm text-amber-950 font-extrabold leading-relaxed flex items-center gap-3 break-keep">
-                  <Lightbulb size={20} className="text-amber-500 shrink-0" />
-                  <span>{currentSlide.highlight}</span>
-                </div>
+                {/* SLIDE 6: TYPE_6_STEP3_IPO */}
+                {currentSlide.type === 'TYPE_6_STEP3_IPO' && (
+                  <div className="space-y-3.5 my-auto py-1">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl shadow-xs">
+                      <p className="text-slate-800 font-extrabold text-sm sm:text-base leading-relaxed break-keep">
+                        {currentSlide.stepDesc}
+                      </p>
+                    </div>
 
-                {currentSlide.type === 'TYPE_4_STEP1_STATE' && (
-                  <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl text-xs sm:text-sm text-amber-950 font-extrabold leading-relaxed flex items-center gap-3 break-keep">
-                    <Lightbulb size={20} className="text-amber-500 shrink-0" />
-                    <span>상태 정의를 명확하게 해야 문제 해결 방향 설정 및 알고리즘 설계가 쉬워집니다.</span>
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs flex items-center gap-3 text-left">
+                      <span className="text-lg shrink-0">💡</span>
+                      <div className="flex-1">
+                        <span className="text-sm sm:text-base font-black text-slate-800 inline-block mb-0.5">IPO(입력-처리-출력) 형태로 구조화하는 이유</span>
+                        <p className="text-xs sm:text-sm font-bold text-slate-600 leading-relaxed break-keep">
+                          실제 컴퓨팅 시스템의 데이터 처리 절차 흐름을 쉽게 파악할 수 있어 문제를 체계적으로 정리하기에 좋습니다.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3.5 items-stretch">
+                      <div className="flex-1 flex flex-col gap-2.5">
+                        {currentSlide.ipoCards.map((card, i) => (
+                          <div key={i} className={`py-2 px-3.5 rounded-2xl border-2 ${card.bg} flex items-center gap-3.5 shadow-sm transition-all hover:shadow-md min-h-[48px]`}>
+                            <span className="text-sm sm:text-base font-black text-indigo-600 shrink-0 w-[50px] text-center">
+                              {card.type}
+                            </span>
+                            <div className="flex-1 border-l-2 border-indigo-200/60 pl-3.5">
+                              <p className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep leading-snug text-left">
+                                {card.desc}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="w-[285px] shrink-0 p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/70 flex flex-col justify-center shadow-xs">
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-slate-200">
+                            <span className="text-base">💡</span>
+                            <span className="text-sm sm:text-base font-bold text-slate-800">성적 평균 계산 문제 실생활 예시</span>
+                          </div>
+                          <div className="space-y-3 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">입력</span>
+                              <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">과목별 점수, 과목 수</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">처리</span>
+                              <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균 점수 = (점수 합계) ÷ 과목 수</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-indigo-700 bg-indigo-100 px-2 py-1 rounded-md shrink-0 w-[42px] text-center">출력</span>
+                              <span className="text-xs sm:text-sm font-extrabold text-slate-800 break-keep">평균 점수</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Footer Navigation */}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-3.5 shrink-0">
-            <div className="flex gap-2">
-              {STORY_STEPS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSlideIdx(i)}
-                  className={`h-2.5 rounded-full transition-all cursor-pointer ${i === slideIdx ? 'bg-indigo-600 w-7' : 'bg-slate-200 w-2.5 hover:bg-slate-300'
-                    }`}
-                />
-              ))}
+              {/* Bottom Highlight (1, 2, 3, 6단계에서는 숨김) */}
+              {currentSlide.type !== 'TYPE_1_PROBLEM' && currentSlide.type !== 'TYPE_2_SOLVING_PROCESS' && currentSlide.type !== 'TYPE_3_ABSTRACTION' && currentSlide.type !== 'TYPE_6_STEP3_IPO' && (
+                <div className="flex flex-col gap-2 mt-2 shrink-0">
+                  <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl text-xs sm:text-sm text-amber-950 font-extrabold leading-relaxed flex items-center gap-3 break-keep">
+                    <Lightbulb size={20} className="text-amber-500 shrink-0" />
+                    <span>{currentSlide.highlight}</span>
+                  </div>
+
+                  {currentSlide.type === 'TYPE_4_STEP1_STATE' && (
+                    <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl text-xs sm:text-sm text-amber-950 font-extrabold leading-relaxed flex items-center gap-3 break-keep">
+                      <Lightbulb size={20} className="text-amber-500 shrink-0" />
+                      <span>상태 정의를 명확하게 해야 문제 해결 방향 설정 및 알고리즘 설계가 쉬워집니다.</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-2.5">
-              {slideIdx > 0 && (
+            {/* Footer Navigation */}
+            <div className="flex items-center justify-between border-t border-slate-100 pt-3.5 shrink-0">
+              <div className="flex gap-2">
+                {STORY_STEPS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSlideIdx(i)}
+                    className={`h-2.5 rounded-full transition-all cursor-pointer ${i === slideIdx ? 'bg-indigo-600 w-7' : 'bg-slate-200 w-2.5 hover:bg-slate-300'
+                      }`}
+                  />
+                ))}
+              </div>
+
+              <div className="flex gap-2.5">
+                {slideIdx > 0 && (
+                  <button
+                    onClick={() => setSlideIdx((i) => i - 1)}
+                    className="btn-secondary text-xs sm:text-sm py-2 px-4 inline-flex items-center justify-center gap-1.5 cursor-pointer font-bold leading-none"
+                  >
+                    <ChevronLeft size={16} />
+                    <span>이전</span>
+                  </button>
+                )}
+                {slideIdx < STORY_STEPS.length - 1 ? (
+                  <button
+                    onClick={() => setSlideIdx((i) => i + 1)}
+                    className="btn-primary text-xs sm:text-sm py-2 px-6 inline-flex items-center justify-center gap-1.5 cursor-pointer font-extrabold leading-none"
+                  >
+                    <span>다음 개념</span>
+                    <ChevronRight size={16} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('abstraction_learn_completed', 'true');
+                      navigate('/', { state: { resetHome: Date.now() } });
+                    }}
+                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs sm:text-sm py-2.5 px-6 rounded-2xl font-black shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5 animate-bounce-in leading-none"
+                  >
+                    <span>🏁</span>
+                    <span>학습 완료</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODE 2: QUIZ SOLVING (데스크톱: 780px x 600px, 모바일: 반응형) */}
+        {mode === 'QUIZ' && currentQuiz && (
+          <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
+            {/* Header Bar */}
+            <div className="flex flex-col gap-2 shrink-0 border-b border-slate-100 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="bg-purple-100 text-purple-700 text-xs font-extrabold px-3 py-1 rounded-full">
+                    개념 퀴즈
+                  </span>
+                  <span className="text-slate-400 text-xs font-bold">
+                    문제 {quizIdx + 1} / {quizQuestions.length}
+                  </span>
+                </div>
                 <button
-                  onClick={() => setSlideIdx((i) => i - 1)}
-                  className="btn-secondary text-xs sm:text-sm py-2 px-4 inline-flex items-center justify-center gap-1.5 cursor-pointer font-bold leading-none"
+                  onClick={() => {
+                    setSlideIdx(0);
+                    setMode('SLIDES');
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer font-bold"
                 >
-                  <ChevronLeft size={16} />
-                  <span>이전</span>
+                  <BookOpen size={14} />
+                  <span>다시 학습하기</span>
                 </button>
-              )}
-              {slideIdx < STORY_STEPS.length - 1 ? (
+              </div>
+
+              {/* Progress Bar */}
+              <div className="progress-bar">
+                <div
+                  className="progress-fill bg-gradient-to-r from-purple-500 to-indigo-600"
+                  style={{ width: `${((quizIdx + 1) / quizQuestions.length) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Question & Options Area */}
+            <div className="my-2 flex-1 flex flex-col justify-start gap-2.5 overflow-hidden" key={quizIdx}>
+              {/* Question Text */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shrink-0 shadow-xs">
+                <span className="inline-block text-xs font-black text-indigo-600 mb-1">
+                  Q{quizIdx + 1}.
+                </span>
+                <h3 className="text-base font-black text-slate-800 leading-snug break-keep">
+                  {currentQuiz.question}
+                </h3>
+              </div>
+
+              {/* Options List */}
+              <div className="space-y-2.5 flex-1 flex flex-col justify-start overflow-y-auto pt-1">
+                {currentQuiz.options.map((option, optIdx) => {
+                  const isSelected = userAnswers[quizIdx] === option;
+                  return (
+                    <button
+                      key={optIdx}
+                      onClick={() => handleSelectAnswer(option)}
+                      className={`w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer ${isSelected
+                        ? 'border-indigo-600 bg-indigo-50/90 text-indigo-950 font-extrabold shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-indigo-300 text-slate-700 font-bold hover:bg-slate-50/50'
+                        }`}
+                    >
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                        {optIdx + 1}
+                      </span>
+                      <span className="text-xs sm:text-sm font-extrabold leading-snug break-keep">{option}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer Controls */}
+            <div className="flex items-center justify-between border-t border-slate-100 pt-3 shrink-0">
+              <button
+                onClick={() => setQuizIdx((i) => Math.max(0, i - 1))}
+                disabled={quizIdx === 0}
+                className="btn-secondary text-xs sm:text-sm py-2 px-4 inline-flex items-center justify-center gap-1 cursor-pointer font-bold leading-none disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+                <span>이전 문제</span>
+              </button>
+
+              {quizIdx < quizQuestions.length - 1 ? (
                 <button
-                  onClick={() => setSlideIdx((i) => i + 1)}
-                  className="btn-primary text-xs sm:text-sm py-2 px-6 inline-flex items-center justify-center gap-1.5 cursor-pointer font-extrabold leading-none"
+                  onClick={() => setQuizIdx((i) => i + 1)}
+                  disabled={!userAnswers[quizIdx]}
+                  className="btn-primary text-xs sm:text-sm py-2 px-5 inline-flex items-center justify-center gap-1.5 cursor-pointer font-extrabold leading-none disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <span>다음 개념</span>
+                  <span>다음 문제</span>
                   <ChevronRight size={16} />
                 </button>
               ) : (
                 <button
-                  onClick={() => {
-                    localStorage.setItem('abstraction_learn_completed', 'true');
-                    navigate('/', { state: { resetHome: Date.now() } });
-                  }}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs sm:text-sm py-2.5 px-6 rounded-2xl font-black shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5 animate-bounce-in leading-none"
+                  onClick={() => setMode('RESULT')}
+                  disabled={Object.keys(userAnswers).length < quizQuestions.length}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm py-2.5 px-6 rounded-2xl font-black shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed leading-none"
                 >
-                  <span>🏁</span>
-                  <span>학습 완료</span>
+                  <span>🚀</span>
+                  <span>퀴즈 제출하기</span>
                 </button>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* MODE 2: QUIZ SOLVING (데스크톱: 780px x 600px, 모바일: 반응형) */}
-      {mode === 'QUIZ' && currentQuiz && (
-        <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
-          {/* Header Bar */}
-          <div className="flex flex-col gap-2 shrink-0 border-b border-slate-100 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="bg-purple-100 text-purple-700 text-xs font-extrabold px-3 py-1 rounded-full">
-                  개념 퀴즈
-                </span>
-                <span className="text-slate-400 text-xs font-bold">
-                  문제 {quizIdx + 1} / {quizQuestions.length}
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  setSlideIdx(0);
-                  setMode('SLIDES');
-                }}
-                className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer font-bold"
-              >
-                <BookOpen size={14} />
-                <span>다시 학습하기</span>
-              </button>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="progress-bar">
-              <div
-                className="progress-fill bg-gradient-to-r from-purple-500 to-indigo-600"
-                style={{ width: `${((quizIdx + 1) / quizQuestions.length) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Question & Options Area */}
-          <div className="my-2 flex-1 flex flex-col justify-start gap-2.5 overflow-hidden" key={quizIdx}>
-            {/* Question Text */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shrink-0 shadow-xs">
-              <span className="inline-block text-xs font-black text-indigo-600 mb-1">
-                Q{quizIdx + 1}.
-              </span>
-              <h3 className="text-base font-black text-slate-800 leading-snug break-keep">
-                {currentQuiz.question}
-              </h3>
-            </div>
-
-            {/* Options List */}
-            <div className="space-y-2.5 flex-1 flex flex-col justify-start overflow-y-auto pt-1">
-              {currentQuiz.options.map((option, optIdx) => {
-                const isSelected = userAnswers[quizIdx] === option;
-                return (
-                  <button
-                    key={optIdx}
-                    onClick={() => handleSelectAnswer(option)}
-                    className={`w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer ${isSelected
-                        ? 'border-indigo-600 bg-indigo-50/90 text-indigo-950 font-extrabold shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-indigo-300 text-slate-700 font-bold hover:bg-slate-50/50'
-                      }`}
-                  >
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
-                      }`}>
-                      {optIdx + 1}
-                    </span>
-                    <span className="text-xs sm:text-sm font-extrabold leading-snug break-keep">{option}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Footer Controls */}
-          <div className="flex items-center justify-between border-t border-slate-100 pt-3 shrink-0">
-            <button
-              onClick={() => setQuizIdx((i) => Math.max(0, i - 1))}
-              disabled={quizIdx === 0}
-              className="btn-secondary text-xs sm:text-sm py-2 px-4 inline-flex items-center justify-center gap-1 cursor-pointer font-bold leading-none disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft size={16} />
-              <span>이전 문제</span>
-            </button>
-
-            {quizIdx < quizQuestions.length - 1 ? (
-              <button
-                onClick={() => setQuizIdx((i) => i + 1)}
-                disabled={!userAnswers[quizIdx]}
-                className="btn-primary text-xs sm:text-sm py-2 px-5 inline-flex items-center justify-center gap-1.5 cursor-pointer font-extrabold leading-none disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <span>다음 문제</span>
-                <ChevronRight size={16} />
-              </button>
-            ) : (
-              <button
-                onClick={() => setMode('RESULT')}
-                disabled={Object.keys(userAnswers).length < quizQuestions.length}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm py-2.5 px-6 rounded-2xl font-black shadow-md hover:shadow-lg transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed leading-none"
-              >
-                <span>🚀</span>
-                <span>퀴즈 제출하기</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* MODE 3: RESULT & EXPLANATION (데스크톱: 780px x 600px, 모바일: 반응형) */}
-      {mode === 'RESULT' && (
-        <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
-          {/* Result Banner (Top Half) */}
-          <div className={`p-5 rounded-2xl border-2 text-center flex flex-col items-center justify-center shrink-0 ${scoreResult.passed
+        {/* MODE 3: RESULT & EXPLANATION (데스크톱: 780px x 600px, 모바일: 반응형) */}
+        {mode === 'RESULT' && (
+          <div className="card-bento responsive-learn-card w-full max-w-[780px] h-[600px] bg-white shadow-2xl p-6 relative overflow-hidden flex flex-col justify-between rounded-3xl border border-indigo-100 animate-fade-up">
+            {/* Result Banner (Top Half) */}
+            <div className={`p-5 rounded-2xl border-2 text-center flex flex-col items-center justify-center shrink-0 ${scoreResult.passed
               ? 'bg-gradient-to-br from-emerald-50 via-teal-50 to-indigo-50 border-emerald-300'
               : 'bg-gradient-to-br from-amber-50 via-orange-50 to-indigo-50 border-amber-300'
-            }`}>
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <span className="text-2xl">{scoreResult.passed ? '🎉' : '💡'}</span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-800">
-                {scoreResult.passed ? '축하합니다! 통과하셨습니다' : '아쉽지만 조금 더 복습해볼까요?'}
-              </h2>
-            </div>
+              }`}>
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <span className="text-2xl">{scoreResult.passed ? '🎉' : '💡'}</span>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-800">
+                  {scoreResult.passed ? '축하합니다! 통과하셨습니다' : '아쉽지만 조금 더 복습해볼까요?'}
+                </h2>
+              </div>
 
-            <p className="text-slate-600 text-sm font-bold mb-3">
-              총 {quizQuestions.length}문항 중 <span className="text-indigo-600 text-xl font-black">{scoreResult.score}</span>문항 정답 (100점 만점 기준 {scoreResult.score * 10}점)
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <button
-                onClick={handleGoToProblems}
-                className="btn-primary text-xs sm:text-sm px-6 py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer font-black transform hover:-translate-y-0.5"
-              >
-                <span>✏️</span>
-                <span>실생활 문제 풀러가기</span>
-                <ChevronRight size={18} />
-              </button>
-              <button
-                onClick={startQuiz}
-                className="btn-secondary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
-              >
-                <RotateCcw size={16} />
-                <span>퀴즈 다시 풀기</span>
-              </button>
-              <button
-                onClick={() => {
-                  setSlideIdx(0);
-                  setMode('SLIDES');
-                }}
-                className="btn-secondary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
-              >
-                <BookOpen size={16} />
-                <span>개념 다시 학습하기</span>
-              </button>
-            </div>
-
-            {!scoreResult.passed && (
-              <p className="text-[11px] text-amber-700 font-extrabold mt-2">
-                ※ 10문항을 모두 맞히면 [개념 퀴즈 학습 완료] 뱃지가 부여됩니다! 아래 오답 카드를 클릭하여 정답 해설을 확인해보세요.
+              <p className="text-slate-600 text-sm font-bold mb-3">
+                총 {quizQuestions.length}문항 중 <span className="text-indigo-600 text-xl font-black">{scoreResult.score}</span>문항 정답 (100점 만점 기준 {scoreResult.score * 10}점)
               </p>
-            )}
-          </div>
 
-          {/* Question Grid Section (Bottom Half) */}
-          <div className="flex-1 flex flex-col justify-start overflow-hidden mt-3 pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-2 shrink-0">
-              <h3 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
-                <Sparkles size={16} className="text-indigo-600" />
-                <span>문항별 정/오답 확인 (클릭 시 상세 해설 팝업)</span>
-              </h3>
+              {/* CTA Buttons */}
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <button
+                  onClick={handleGoToProblems}
+                  className="btn-primary text-xs sm:text-sm px-6 py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer font-black transform hover:-translate-y-0.5"
+                >
+                  <span>✏️</span>
+                  <span>실생활 문제 풀러가기</span>
+                  <ChevronRight size={18} />
+                </button>
+                <button
+                  onClick={startQuiz}
+                  className="btn-secondary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
+                >
+                  <RotateCcw size={16} />
+                  <span>퀴즈 다시 풀기</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSlideIdx(0);
+                    setMode('SLIDES');
+                  }}
+                  className="btn-secondary text-xs sm:text-sm px-5 py-2.5 flex items-center gap-1.5 cursor-pointer font-extrabold"
+                >
+                  <BookOpen size={16} />
+                  <span>개념 다시 학습하기</span>
+                </button>
+              </div>
+
+              {!scoreResult.passed && (
+                <p className="text-[11px] text-amber-700 font-extrabold mt-2">
+                  ※ 10문항을 모두 맞히면 [개념 퀴즈 학습 완료] 뱃지가 부여됩니다! 아래 오답 카드를 클릭하여 정답 해설을 확인해보세요.
+                </p>
+              )}
             </div>
 
-            {/* 10 Question Grid Buttons */}
-            <div className="grid grid-cols-2 gap-2 flex-1 overflow-y-auto pr-1">
-              {scoreResult.details.map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedDetailQuestion(item)}
-                  className={`p-2.5 rounded-xl border-2 text-left flex items-center justify-between transition-all cursor-pointer hover:shadow-sm ${item.isCorrect
+            {/* Question Grid Section (Bottom Half) */}
+            <div className="flex-1 flex flex-col justify-start overflow-hidden mt-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2 shrink-0">
+                <h3 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
+                  <Sparkles size={16} className="text-indigo-600" />
+                  <span>문항별 정/오답 확인 (클릭 시 상세 해설 팝업)</span>
+                </h3>
+              </div>
+
+              {/* 10 Question Grid Buttons */}
+              <div className="grid grid-cols-2 gap-2 flex-1 overflow-y-auto pr-1">
+                {scoreResult.details.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedDetailQuestion(item)}
+                    className={`p-2.5 rounded-xl border-2 text-left flex items-center justify-between transition-all cursor-pointer hover:shadow-sm ${item.isCorrect
                       ? 'border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/60'
                       : 'border-rose-200 bg-rose-50/50 hover:bg-rose-100/60'
-                    }`}
+                      }`}
+                  >
+                    <div className="flex items-center gap-2 overflow-hidden pr-2">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0 ${item.isCorrect ? 'bg-emerald-600' : 'bg-rose-500'
+                        }`}>
+                        {idx + 1}
+                      </span>
+                      <span className="text-xs font-extrabold text-slate-800 truncate">
+                        {item.question}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded ${item.isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                        {item.isCorrect ? '정답 ✓' : '오답 ✕'}
+                      </span>
+                      <span className="text-[10px] font-extrabold text-indigo-600 underline">해설</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Explanation Detail Popup Modal */}
+        {selectedDetailQuestion && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-up">
+            <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-indigo-100 text-left space-y-4 animate-bounce-in relative">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-black px-2.5 py-1 rounded-full text-white ${selectedDetailQuestion.isCorrect ? 'bg-emerald-600' : 'bg-rose-500'
+                    }`}>
+                    문항 {selectedDetailQuestion.id} - {selectedDetailQuestion.isCorrect ? '정답 ✓' : '오답 ✕'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedDetailQuestion(null)}
+                  className="text-xs text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
                 >
-                  <div className="flex items-center gap-2 overflow-hidden pr-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0 ${item.isCorrect ? 'bg-emerald-600' : 'bg-rose-500'
-                      }`}>
-                      {idx + 1}
-                    </span>
-                    <span className="text-xs font-extrabold text-slate-800 truncate">
-                      {item.question}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded ${item.isCorrect ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                      }`}>
-                      {item.isCorrect ? '정답 ✓' : '오답 ✕'}
-                    </span>
-                    <span className="text-[10px] font-extrabold text-indigo-600 underline">해설</span>
-                  </div>
+                  ✕ 닫기
                 </button>
-              ))}
+              </div>
+
+              {/* Question */}
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <h4 className="text-sm sm:text-base font-black text-slate-800 leading-snug">
+                  Q{selectedDetailQuestion.id}. {selectedDetailQuestion.question}
+                </h4>
+              </div>
+
+              {/* Detailed Explanation */}
+              <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs sm:text-sm text-slate-800 font-semibold leading-relaxed shadow-xs">
+                <div className="flex items-center gap-1.5 text-amber-800 font-black mb-1.5 pb-1 border-b border-amber-200/60">
+                  <span className="text-base">💡</span>
+                  <span className="text-sm font-extrabold">해설</span>
+                </div>
+                <p className="text-slate-800 font-bold break-keep leading-relaxed">{selectedDetailQuestion.explanation}</p>
+              </div>
+
+              <div className="text-right pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => setSelectedDetailQuestion(null)}
+                  className="btn-primary text-xs py-2 px-5 rounded-xl font-bold cursor-pointer"
+                >
+                  확인
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Explanation Detail Popup Modal */}
-      {selectedDetailQuestion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-up">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-indigo-100 text-left space-y-4 animate-bounce-in relative">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-black px-2.5 py-1 rounded-full text-white ${selectedDetailQuestion.isCorrect ? 'bg-emerald-600' : 'bg-rose-500'
-                  }`}>
-                  문항 {selectedDetailQuestion.id} - {selectedDetailQuestion.isCorrect ? '정답 ✓' : '오답 ✕'}
-                </span>
-              </div>
-              <button
-                onClick={() => setSelectedDetailQuestion(null)}
-                className="text-xs text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                ✕ 닫기
-              </button>
-            </div>
-
-            {/* Question */}
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-              <h4 className="text-sm sm:text-base font-black text-slate-800 leading-snug">
-                Q{selectedDetailQuestion.id}. {selectedDetailQuestion.question}
-              </h4>
-            </div>
-
-            {/* Detailed Explanation */}
-            <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl text-xs sm:text-sm text-slate-800 font-semibold leading-relaxed shadow-xs">
-              <div className="flex items-center gap-1.5 text-amber-800 font-black mb-1.5 pb-1 border-b border-amber-200/60">
-                <span className="text-base">💡</span>
-                <span className="text-sm font-extrabold">해설</span>
-              </div>
-              <p className="text-slate-800 font-bold break-keep leading-relaxed">{selectedDetailQuestion.explanation}</p>
-            </div>
-
-            <div className="text-right pt-2 border-t border-slate-100">
-              <button
-                onClick={() => setSelectedDetailQuestion(null)}
-                className="btn-primary text-xs py-2 px-5 rounded-xl font-bold cursor-pointer"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 // 실제 배포 시 아래 firebaseConfig 값을 Firebase Console에서 발급받은 값으로 교체하세요.
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'YOUR_API_KEY',
@@ -16,15 +16,19 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+});
 
 // --- Firestore CRUD helpers ---
 
 export async function fetchProblems() {
   try {
     const snapshot = await getDocs(collection(db, 'problems'));
-    if (snapshot.empty) return null;
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    if (snapshot.empty) return [];
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((p) => !p.deleted);
   } catch (e) {
     console.warn('Firebase fetch failed, falling back to local data.', e);
     return null;
@@ -36,6 +40,28 @@ export async function saveProblem(problem) {
   await setDoc(ref, { ...problem, adminKey: 'comedu2026' }, { merge: true });
 }
 
+export async function saveProblemsBatch(problems) {
+  const snapshot = await getDocs(collection(db, 'problems'));
+  const existingIds = snapshot.docs
+    .filter((d) => !d.data().deleted)
+    .map((d) => d.id);
+  const newIds = problems.map(p => p.id);
+  const idsToDelete = existingIds.filter(id => !newIds.includes(id));
+
+  const batch = writeBatch(db);
+  for (const problem of problems) {
+    const ref = doc(db, 'problems', problem.id);
+    batch.set(ref, { ...problem, adminKey: 'comedu2026', deleted: false }, { merge: true });
+  }
+
+  for (const id of idsToDelete) {
+    const ref = doc(db, 'problems', id);
+    batch.set(ref, { adminKey: 'comedu2026', deleted: true }, { merge: true });
+  }
+
+  await batch.commit();
+}
+
 export async function deleteProblemFromDB(problemId) {
   await deleteDoc(doc(db, 'problems', problemId));
 }
@@ -43,8 +69,10 @@ export async function deleteProblemFromDB(problemId) {
 export async function fetchQuizQuestions() {
   try {
     const snapshot = await getDocs(collection(db, 'quiz_questions'));
-    if (snapshot.empty) return null;
-    return snapshot.docs.map((d) => ({ id: Number(d.id) || d.id, ...d.data() }));
+    if (snapshot.empty) return [];
+    return snapshot.docs
+      .map((d) => ({ id: Number(d.id) || d.id, ...d.data() }))
+      .filter((q) => !q.deleted);
   } catch (e) {
     console.warn('Firebase fetch quiz failed, falling back to local data.', e);
     return null;
@@ -54,6 +82,28 @@ export async function fetchQuizQuestions() {
 export async function saveQuizQuestion(question) {
   const ref = doc(db, 'quiz_questions', String(question.id));
   await setDoc(ref, { ...question, adminKey: 'comedu2026' }, { merge: true });
+}
+
+export async function saveQuizQuestionsBatch(questions) {
+  const snapshot = await getDocs(collection(db, 'quiz_questions'));
+  const existingIds = snapshot.docs
+    .filter((d) => !d.data().deleted)
+    .map((d) => d.id);
+  const newIds = questions.map(q => String(q.id));
+  const idsToDelete = existingIds.filter(id => !newIds.includes(id));
+
+  const batch = writeBatch(db);
+  for (const question of questions) {
+    const ref = doc(db, 'quiz_questions', String(question.id));
+    batch.set(ref, { ...question, adminKey: 'comedu2026', deleted: false }, { merge: true });
+  }
+
+  for (const id of idsToDelete) {
+    const ref = doc(db, 'quiz_questions', id);
+    batch.set(ref, { adminKey: 'comedu2026', deleted: true }, { merge: true });
+  }
+
+  await batch.commit();
 }
 
 export async function deleteQuizQuestionFromDB(questionId) {

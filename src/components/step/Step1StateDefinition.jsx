@@ -148,7 +148,7 @@ export default function Step1StateDefinition({ problem, onComplete, soundOn }) {
                         )}
                       </Draggable>
                     ))}
-                    {provided.placeholder}
+                    <span className="hidden">{provided.placeholder}</span>
                     {zone.length === 0 && (
                       <p className="text-slate-300 text-xs font-bold text-center py-1.5 pointer-events-none">
                         여기로 카드를 끌어다 놓으세요
@@ -188,7 +188,7 @@ export default function Step1StateDefinition({ problem, onComplete, soundOn }) {
                     )}
                   </Draggable>
                 ))}
-                {provided.placeholder}
+                <span className="hidden">{provided.placeholder}</span>
                 {pool.length === 0 && !snapshot.isDraggingOver && (
                   <p className="text-slate-400 font-bold text-xs text-center py-1.5 w-full">모든 카드를 배치했어요!</p>
                 )}

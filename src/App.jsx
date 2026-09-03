@@ -145,102 +145,47 @@ function sanitizeProblemText(obj) {
 }
 
 export default function App() {
-  const [problems, setProblems] = useState(() => {
-    try {
-      const saved = localStorage.getItem('custom_problems');
-      let loaded = saved ? JSON.parse(saved) : initialProblems;
-
-      // Always sync step3 3-part hint objects from initialProblems
-      loaded = loaded.map((p) => {
-        const initP = initialProblems.find((ip) => ip.id === p.id);
-        if (initP && initP.step3 && typeof initP.step3.hint === 'object') {
-          return {
-            ...p,
-            step3: {
-              ...p.step3,
-              hint: initP.step3.hint
-            }
-          };
-        }
-        return p;
-      });
-
-      return sanitizeProblemText(loaded);
-    } catch {
-      return sanitizeProblemText(initialProblems);
-    }
-  });
-
-  const [quizQuestions, setQuizQuestions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('custom_quiz_questions');
-      return saved ? JSON.parse(saved) : initialQuizQuestions;
-    } catch {
-      return initialQuizQuestions;
-    }
-  });
+  const [problems, setProblems] = useState([]);
+  const [quizQuestions, setQuizQuestions] = useState([]);
 
   const handleProblemsChange = (newProblems) => {
     const sanitized = sanitizeProblemText(newProblems);
     setProblems(sanitized);
-    try {
-      localStorage.setItem('custom_problems', JSON.stringify(sanitized));
-    } catch (e) {
-      console.error('Failed to save to localStorage:', e);
-    }
   };
 
   const handleQuizQuestionsChange = (newQuizQuestions) => {
     setQuizQuestions(newQuizQuestions);
-    try {
-      localStorage.setItem('custom_quiz_questions', JSON.stringify(newQuizQuestions));
-    } catch (e) {
-      console.error('Failed to save quiz questions to localStorage:', e);
-    }
   };
 
   useEffect(() => {
     // Try to load problems from Firebase; fall back to local data silently
     fetchProblems().then((remote) => {
-      if (remote && remote.length > 0) {
+      if (remote !== null) {
         const tutorialProb = initialProblems.find((p) => p.isTutorial);
         const hasTutorial = remote.some((p) => p.id === 'problem_practice' || p.isTutorial);
         const merged = (tutorialProb && !hasTutorial) ? [tutorialProb, ...remote] : remote;
         
-        // Ensure 3-part step3 hints are merged even when loading from remote
-        const synced = merged.map((p) => {
-          const initP = initialProblems.find((ip) => ip.id === p.id);
-          if (initP && initP.step3 && typeof initP.step3.hint === 'object') {
-            return {
-              ...p,
-              step3: {
-                ...p.step3,
-                hint: initP.step3.hint
-              }
-            };
+        const sanitized = sanitizeProblemText(merged);
+        setProblems(sanitized);
+      } else {
+        // Firebase fetch failed, fallback to JS file
+        let loaded = initialProblems.map((p) => {
+          if (p.step3 && typeof p.step3.hint === 'object') {
+            return { ...p, step3: { ...p.step3, hint: p.step3.hint } };
           }
           return p;
         });
-
-        const sanitized = sanitizeProblemText(synced);
-        setProblems(sanitized);
-        try {
-          localStorage.setItem('custom_problems', JSON.stringify(sanitized));
-        } catch (e) {
-          console.error(e);
-        }
+        setProblems(sanitizeProblemText(loaded));
       }
     });
 
     // Try to load quiz questions from Firebase
     fetchQuizQuestions().then((remoteQuiz) => {
-      if (remoteQuiz && remoteQuiz.length > 0) {
+      if (remoteQuiz !== null) {
         setQuizQuestions(remoteQuiz);
-        try {
-          localStorage.setItem('custom_quiz_questions', JSON.stringify(remoteQuiz));
-        } catch (e) {
-          console.error(e);
-        }
+      } else {
+        // Firebase fetch failed, fallback to JS file
+        setQuizQuestions(initialQuizQuestions);
       }
     });
   }, []);

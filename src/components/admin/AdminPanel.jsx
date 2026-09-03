@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Plus, Pencil, Trash2, Save, X, ShieldCheck, Check, Info, Search, Filter, Eye, EyeOff, CloudUpload, Download, Upload, ArrowUpDown, GripVertical, RotateCcw, History, AlertTriangle } from 'lucide-react';
-import { saveProblem, deleteProblemFromDB, saveQuizQuestion, deleteQuizQuestionFromDB, saveVersionSnapshot, fetchVersionSnapshots, deleteVersionSnapshot } from '../../config/firebase';
+import { saveProblem, saveProblemsBatch, deleteProblemFromDB, saveQuizQuestion, saveQuizQuestionsBatch, deleteQuizQuestionFromDB, saveVersionSnapshot, fetchVersionSnapshots, deleteVersionSnapshot } from '../../config/firebase';
 
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || 'comedu2026';
 
@@ -219,9 +219,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       setSyncing(true);
       setSyncMsg('☁️ 복원된 개념 퀴즈를 DB에 반영 중...');
       try {
-        for (const q of versionItem.data) {
-          await saveQuizQuestion(q);
-        }
+        await saveQuizQuestionsBatch(versionItem.data);
         setSyncMsg(`✅ [${versionItem.dateStr}] 버전 (${versionItem.data.length}문항) 복원 완료!`);
       } catch {
         setSyncMsg(`✅ [${versionItem.dateStr}] 버전으로 로컬 복원 완료!`);
@@ -235,9 +233,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       setSyncing(true);
       setSyncMsg('☁️ 복원된 실생활 문제를 DB에 반영 중...');
       try {
-        for (const p of versionItem.data) {
-          await saveProblem(p);
-        }
+        await saveProblemsBatch(versionItem.data);
         setSyncMsg(`✅ [${versionItem.dateStr}] 버전 (${versionItem.data.length}개 문제) 복원 완료!`);
       } catch {
         setSyncMsg(`✅ [${versionItem.dateStr}] 버전으로 로컬 복원 완료!`);
@@ -334,9 +330,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     setSyncing(true);
     setSyncMsg('');
     try {
-      for (const p of problems) {
-        await saveProblem(p);
-      }
+      await saveProblemsBatch(problems);
       saveToDiskFile(problems);
       // Automatically record a timestamped version snapshot
       await recordVersionSnapshot('problems', problems, '수동 DB 직접 저장', true);
@@ -434,9 +428,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
         // 3. Sync all merged problems to Firestore DB
         setSyncing(true);
         setSyncMsg('☁️ 업로드된 문제를 DB에 반영 중...');
-        for (const p of mergedProblems) {
-          await saveProblem(p);
-        }
+        await saveProblemsBatch(mergedProblems);
 
         setSyncMsg(`✅ ${normalized.length}개 업로드 처리 완료! (총 ${mergedProblems.length}개 문제 유지 및 반영)`);
         setTimeout(() => setSyncMsg(''), 5000);
@@ -495,9 +487,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
         setSyncing(true);
         setSyncMsg('☁️ 업로드된 퀴즈를 DB에 반영 중...');
         try {
-          for (const q of parsed) {
-            await saveQuizQuestion(q);
-          }
+          await saveQuizQuestionsBatch(parsed);
           setSyncMsg(`✅ ${parsed.length}개 개념 퀴즈 업로드 및 DB 전송 완료!`);
         } catch (dbErr) {
           console.warn('Firebase sync failed (permission or rule setting issue):', dbErr);
@@ -519,11 +509,11 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     setSyncing(true);
     setSyncMsg('');
     try {
-      for (const q of quizQuestions) {
-        await saveQuizQuestion(q);
-      }
+      await saveQuizQuestionsBatch(quizQuestions);
       // Automatically record a timestamped version snapshot for quizzes
       await recordVersionSnapshot('quiz', quizQuestions, '수동 개념 퀴즈 DB 저장', true);
+      setHasUnsavedChanges(false);
+      setOrderHistory([]);
     } catch (e) {
       console.error(e);
       setSyncMsg('❌ 퀴즈 DB 전송 실패: Firestore 규칙을 확인해 주세요.');
@@ -672,20 +662,9 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
       updatedList = problems.map((p) => (p.id === editingOriginalId ? editForm : p));
     }
 
-    // Update local state & localStorage & disk initialProblems.js instantly
+    // Update local state instantly
     onProblemsChange(updatedList);
-    saveToDiskFile(updatedList);
-
-    // If ID changed in edit mode, delete the old document in DB
-    if (!isAdding && editingOriginalId && editingOriginalId !== editForm.id) {
-      deleteProblemFromDB(editingOriginalId).catch((err) => console.warn('Old DB doc delete failed:', err));
-    }
-
-    // Sync to DB in background safely without blocking
-    saveProblem(editForm).catch((err) => console.warn('DB sync postponed:', err));
-
-    // 자동 저장 시 버전 및 변경 로그 스냅샷 기록
-    recordVersionSnapshot('problems', updatedList, logNote);
+    setHasUnsavedChanges(true);
 
     closeModal();
   }
@@ -695,16 +674,9 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     const target = problems.find((p) => p.id === id);
     const updatedList = problems.filter((p) => p.id !== id);
 
-    // Update local state & localStorage & disk initialProblems.js instantly
+    // Update local state instantly
     onProblemsChange(updatedList);
-    saveToDiskFile(updatedList);
-
-    // Sync to DB in background safely without blocking
-    deleteProblemFromDB(id).catch((err) => console.warn('DB delete postponed:', err));
-
-    // 삭제 시 버전 및 변경 로그 스냅샷 기록
-    const logNote = `[${timeStr}] 자동저장: [${id}] '${target?.title || ''}' 삭제`;
-    recordVersionSnapshot('problems', updatedList, logNote);
+    setHasUnsavedChanges(true);
 
     setDeleteConfirm(null);
   }
@@ -770,10 +742,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     }
 
     onQuizQuestionsChange(updatedQuizList);
-    saveQuizQuestion(quizForm).catch((e) => console.warn('Quiz DB sync error:', e));
-
-    // 퀴즈 자동 저장 시 버전 및 변경 로그 스냅샷 기록
-    recordVersionSnapshot('quiz', updatedQuizList, logNote);
+    setHasUnsavedChanges(true);
 
     closeQuizModal();
   }
@@ -782,11 +751,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const updatedList = quizQuestions.filter((q) => q.id !== id);
     onQuizQuestionsChange(updatedList);
-    deleteQuizQuestionFromDB(id).catch((e) => console.warn('Quiz DB delete error:', e));
-
-    // 퀴즈 삭제 시 버전 및 변경 로그 스냅샷 기록
-    const logNote = `[${timeStr}] 자동저장: 문항 #${id} 삭제`;
-    recordVersionSnapshot('quiz', updatedList, logNote);
+    setHasUnsavedChanges(true);
 
     setDeleteQuizConfirm(null);
   }
@@ -976,7 +941,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               <button
                 onClick={handleSyncQuizToDB}
                 disabled={syncing}
-                className="h-9 bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1 text-xs px-3 rounded-xl cursor-pointer font-black shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 shrink-0"
+                className={`h-9 text-white flex items-center gap-1 text-xs px-3 rounded-xl cursor-pointer font-black shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 shrink-0 ${hasUnsavedChanges ? 'bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-400 ring-offset-1 animate-pulse' : 'bg-amber-600 hover:bg-amber-700'}`}
                 title="현재 전체 개념 퀴즈 데이터를 구글 Firestore 클라우드 DB로 전송합니다."
               >
                 <CloudUpload size={14} />
@@ -1042,7 +1007,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               <button
                 onClick={handleSyncToDB}
                 disabled={syncing}
-                className={`h-9 text-white flex items-center gap-1 text-xs px-3 rounded-xl cursor-pointer font-black shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 shrink-0 ${hasUnsavedChanges ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400 ring-offset-1 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                className={`h-9 text-white flex items-center gap-1 text-xs px-3 rounded-xl cursor-pointer font-black shadow-2xs hover:shadow-xs transition-all disabled:opacity-50 shrink-0 ${hasUnsavedChanges ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-amber-400 ring-offset-1 animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                 title="현재 전체 문제 데이터를 구글 Firestore 클라우드 DB로 전송합니다."
               >
                 <CloudUpload size={14} />
@@ -2602,7 +2567,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
                     setShowUnsavedWarningModal(false);
                     setPendingAction(null);
                   }}
-                  className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold rounded-xl text-xs transition-all cursor-pointer"
+                  className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-extrabold rounded-xl text-xs transition-all cursor-pointer"
                 >
                   취소 (머무르기)
                 </button>

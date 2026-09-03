@@ -110,7 +110,7 @@ export default function Practice({ problems, completedIds, onComplete, soundOn }
               if (problem.isTutorial) {
                 localStorage.setItem('abstraction_tutorial_first_done', 'true');
               }
-              navigate('/', { state: { resetHome: Date.now() } });
+              navigate('/', { state: { showGrid: true } });
             }}
             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-base px-8 py-4 flex items-center justify-center gap-2 cursor-pointer font-black shadow-md hover:shadow-lg transition-all rounded-2xl transform hover:-translate-y-0.5"
           >

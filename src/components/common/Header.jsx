@@ -9,6 +9,15 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
   const location = useLocation();
   const [isConceptModalOpen, setIsConceptModalOpen] = useState(false);
 
+  const handleHomeNavigation = (e) => {
+    if (location.pathname.startsWith('/admin')) {
+      const event = new CustomEvent('request-navigate-home', { cancelable: true });
+      window.dispatchEvent(event);
+      if (event.defaultPrevented) return;
+    }
+    navigate('/', { state: { resetHome: true } });
+  };
+
   return (
     <>
       <header className="sticky top-0 z-20 bg-white border-b border-slate-100 shadow-sm">
@@ -16,7 +25,7 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
           {/* Left section: Home Button + Main Title */}
           <div className="flex items-center gap-3 sm:gap-6 z-10">
             <button
-              onClick={() => window.location.reload()}
+              onClick={handleHomeNavigation}
               className="flex items-center gap-2 text-indigo-600 font-black text-sm sm:text-base cursor-pointer shrink-0"
               title="새로고침"
             >
@@ -28,23 +37,13 @@ export default function Header({ soundOn, onToggleSound, completedCount = 0, tot
               </span>
             </button>
 
-            {/* Concept Modal Button (실습 문제 페이지에서만 표시) */}
-            {showConceptBtn && (
-              <button
-                onClick={() => setIsConceptModalOpen(true)}
-                className="hidden lg:inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-extrabold px-3 py-1.5 rounded-full border border-indigo-200 transition-all cursor-pointer shadow-xs hover:shadow-sm transform hover:-translate-y-0.5 ml-1"
-              >
-                <Lightbulb size={15} className="text-indigo-600 shrink-0" />
-                <span>개념 팝업</span>
-              </button>
-            )}
           </div>
 
           {/* Center section: Top Navigation Menu Bar */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center z-10 whitespace-nowrap">
             <nav className="flex items-center gap-1">
               <button
-                onClick={() => window.location.reload()}
+                onClick={handleHomeNavigation}
                 className="px-3 py-1.5 rounded-md text-[0.9rem] font-semibold cursor-pointer flex items-center gap-1.5 bg-indigo-100 text-indigo-800"
               >
                 <span>🧩</span>

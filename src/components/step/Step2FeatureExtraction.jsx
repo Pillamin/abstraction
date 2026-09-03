@@ -126,7 +126,7 @@ export default function Step2FeatureExtraction({ problem, onComplete, soundOn })
                     )}
                   </Draggable>
                 ))}
-                {provided.placeholder}
+                <span className="hidden">{provided.placeholder}</span>
                 {coreZone.length === 0 && (
                   <p className="text-slate-400 text-xs font-bold py-1.5 text-center w-full pointer-events-none">
                     아래 특징 카드 중 꼭 필요한 핵심 요소만 이곳으로 끌어올리세요
@@ -165,7 +165,7 @@ export default function Step2FeatureExtraction({ problem, onComplete, soundOn })
                     )}
                   </Draggable>
                 ))}
-                {provided.placeholder}
+                <span className="hidden">{provided.placeholder}</span>
                 {pool.length === 0 && !snapshot.isDraggingOver && (
                   <p className="text-slate-400 font-bold text-xs py-1.5 w-full text-center">모든 카드를 살펴봤어요!</p>
                 )}

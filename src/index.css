@@ -230,6 +230,29 @@ div[data-rfd-drag-handle] {
 }
 
 /* ==========================================================================
+   Global UI Fixes for Overflow and Layout
+   ========================================================================== */
+.responsive-learn-card,
+.responsive-concept-card {
+  height: auto !important;
+  min-height: 600px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.responsive-learn-card > div,
+.responsive-concept-card > div {
+  overflow-y: visible !important;
+}
+
+/* Fix Admin Modals and Legal Modals getting clipped */
+.max-h-\[85vh\].overflow-hidden {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* ==========================================================================
    Responsive Layout Media Queries
    (모바일 / 작은 창: max-width: 768px 또는 max-height: 650px)
    데스크톱 (큰 화면): 100dvh, overflow: hidden 유지

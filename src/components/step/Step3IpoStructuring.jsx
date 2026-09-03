@@ -235,7 +235,7 @@ export default function Step3IpoStructuring({ problem, onComplete, soundOn }) {
                       )}
                     </Draggable>
                   ))}
-                  {provided.placeholder}
+                  <span className="hidden">{provided.placeholder}</span>
                   {inputZone.length === 0 && (
                     <p className="text-slate-400 text-xs font-bold m-auto pointer-events-none">
                       [입력] 카드를 올리세요
@@ -353,7 +353,7 @@ export default function Step3IpoStructuring({ problem, onComplete, soundOn }) {
                       )}
                     </Draggable>
                   ))}
-                  {provided.placeholder}
+                  <span className="hidden">{provided.placeholder}</span>
                   {outputZone.length === 0 && (
                     <p className="text-slate-400 text-xs font-bold m-auto pointer-events-none">
                       [출력] 카드를 올리세요
@@ -396,7 +396,7 @@ export default function Step3IpoStructuring({ problem, onComplete, soundOn }) {
                         )}
                       </Draggable>
                     ))}
-                    {provided.placeholder}
+                    <span className="hidden">{provided.placeholder}</span>
                   </div>
                 )}
               </Droppable>
@@ -428,7 +428,7 @@ export default function Step3IpoStructuring({ problem, onComplete, soundOn }) {
                         )}
                       </Draggable>
                     ))}
-                    {provided.placeholder}
+                    <span className="hidden">{provided.placeholder}</span>
                   </div>
                 )}
               </Droppable>
@@ -460,7 +460,7 @@ export default function Step3IpoStructuring({ problem, onComplete, soundOn }) {
                         )}
                       </Draggable>
                     ))}
-                    {provided.placeholder}
+                    <span className="hidden">{provided.placeholder}</span>
                   </div>
                 )}
               </Droppable>
