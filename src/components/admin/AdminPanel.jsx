@@ -72,7 +72,7 @@ function normalizeProblemData(p) {
 }
 
 export default function AdminPanel({ problems, onProblemsChange, quizQuestions = [], onQuizQuestionsChange }) {
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem('admin_auth') === 'true');
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
 
@@ -118,6 +118,34 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
   const [pendingAction, setPendingAction] = useState(null); // () => void
 
   const navigate = useNavigate();
+
+  // 관리자 메뉴 진입 시 DB에서 최신 데이터 강제 새로고침
+  useEffect(() => {
+    import('../../config/firebase').then(({ fetchProblems, fetchQuizQuestions }) => {
+      setSyncing(true);
+      setSyncMsg('☁️ 최신 데이터를 DB에서 불러오는 중...');
+      
+      Promise.all([fetchProblems(), fetchQuizQuestions()])
+        .then(([remoteProblems, remoteQuiz]) => {
+          if (remoteProblems !== null) {
+            onProblemsChange(remoteProblems);
+          }
+          if (remoteQuiz !== null) {
+            onQuizQuestionsChange(remoteQuiz);
+          }
+          setSyncMsg('✅ 최신 DB 데이터를 성공적으로 불러왔습니다.');
+        })
+        .catch((e) => {
+          console.error("DB 로드 실패:", e);
+          setSyncMsg('❌ DB 데이터 불러오기 실패');
+        })
+        .finally(() => {
+          setSyncing(false);
+          setTimeout(() => setSyncMsg(''), 3000);
+        });
+    });
+  }, []);
+
 
   // 브라우저 탭 닫기/새로고침 및 헤더 홈 버튼 클릭 시 미저장 경고
   useEffect(() => {
@@ -421,16 +449,10 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
 
         // 1. Update React state & localStorage
         onProblemsChange(mergedProblems);
-
-        // 2. Save to local disk initialProblems.js
-        saveToDiskFile(mergedProblems);
-
-        // 3. Sync all merged problems to Firestore DB
-        setSyncing(true);
-        setSyncMsg('☁️ 업로드된 문제를 DB에 반영 중...');
-        await saveProblemsBatch(mergedProblems);
-
-        setSyncMsg(`✅ ${normalized.length}개 업로드 처리 완료! (총 ${mergedProblems.length}개 문제 유지 및 반영)`);
+        
+        // 2. Set unsaved changes flag so the user must manually click DB Save
+        setHasUnsavedChanges(true);
+        setSyncMsg(`⚠️ ${normalized.length}개 업로드 완료! 상단 [DB 저장] 버튼을 눌러야 최종 반영됩니다.`);
         setTimeout(() => setSyncMsg(''), 5000);
       } catch (err) {
         console.error(err);
@@ -482,17 +504,8 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
         }
 
         onQuizQuestionsChange(parsed);
-
-        // Try syncing to Firebase in background without blocking local state update if permissions fail
-        setSyncing(true);
-        setSyncMsg('☁️ 업로드된 퀴즈를 DB에 반영 중...');
-        try {
-          await saveQuizQuestionsBatch(parsed);
-          setSyncMsg(`✅ ${parsed.length}개 개념 퀴즈 업로드 및 DB 전송 완료!`);
-        } catch (dbErr) {
-          console.warn('Firebase sync failed (permission or rule setting issue):', dbErr);
-          setSyncMsg(`✅ ${parsed.length}개 개념 퀴즈 업로드 완료! (DB 전송은 권한 필요)`);
-        }
+        setHasUnsavedChanges(true);
+        setSyncMsg(`⚠️ ${parsed.length}개 퀴즈 업로드 완료! 상단 [DB 저장] 버튼을 눌러야 최종 반영됩니다.`);
         setTimeout(() => setSyncMsg(''), 5000);
       } catch (err) {
         console.error(err);
@@ -579,6 +592,7 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
     e.preventDefault();
     if (pin === ADMIN_PIN) {
       setAuthenticated(true);
+      sessionStorage.setItem('admin_auth', 'true');
       setPinError(false);
     } else {
       setPinError(true);
@@ -892,7 +906,10 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
               <span>⚙️ 관리자 메뉴</span>
             </h1>
             <button
-              onClick={() => requestNavigation(() => setAuthenticated(false))}
+              onClick={() => requestNavigation(() => {
+                setAuthenticated(false);
+                sessionStorage.removeItem('admin_auth');
+              })}
               className="text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center gap-1 cursor-pointer bg-slate-100 hover:bg-slate-200 py-1.5 px-2.5 rounded-xl transition-colors"
               title="로그아웃"
             >
@@ -912,6 +929,15 @@ export default function AdminPanel({ problems, onProblemsChange, quizQuestions =
             type="file"
             accept=".js,.json"
             onChange={handleQuizFileUpload}
+            className="hidden"
+          />
+
+          {/* Hidden File Input for Problem Upload */}
+          <input
+            id="file-upload-input"
+            type="file"
+            accept=".js,.json"
+            onChange={handleFileUpload}
             className="hidden"
           />
 
